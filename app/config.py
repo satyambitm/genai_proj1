@@ -15,10 +15,10 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     APP_VERSION: str = "1.0.0"
 
-    # OpenAI
-    OPENAI_API_KEY: str = ""
-    OPENAI_MODEL: str = "gpt-4o"
-    OPENAI_VISION_MODEL: str = "gpt-4o"
+    # Google Gemini
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-2.0-flash"
+    GEMINI_VISION_MODEL: str = "gemini-2.0-flash"
 
     # File Upload
     MAX_FILE_SIZE_MB: int = 10

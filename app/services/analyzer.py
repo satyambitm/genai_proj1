@@ -1,14 +1,16 @@
 """
 Analyzer Service — Core AI engine for medical report analysis.
 
-Uses OpenAI GPT-4 for text reports and GPT-4 Vision for image/scanned reports.
+Uses Google Gemini 2.0 Flash for text reports and image/scanned reports.
 Returns structured findings with severity classification.
 """
 
 import json
 import base64
 from typing import Optional
-from openai import OpenAI
+from pathlib import Path
+
+import google.generativeai as genai
 
 from app.config import get_settings
 from app.prompts.medical_prompts import (
@@ -27,9 +29,9 @@ from app.models.schemas import (
 settings = get_settings()
 
 
-def _get_openai_client() -> OpenAI:
-    """Create an OpenAI client instance."""
-    return OpenAI(api_key=settings.OPENAI_API_KEY)
+def _configure_gemini():
+    """Configure the Gemini API client."""
+    genai.configure(api_key=settings.GEMINI_API_KEY)
 
 
 def _parse_ai_response(response_text: str) -> dict:
@@ -52,7 +54,7 @@ def _parse_ai_response(response_text: str) -> dict:
 
 def analyze_text_report(report_text: str, file_id: str) -> AnalysisResponse:
     """
-    Analyze a text-based medical report using OpenAI GPT-4.
+    Analyze a text-based medical report using Google Gemini.
 
     Args:
         report_text: Extracted text content from the medical report.
@@ -61,28 +63,27 @@ def analyze_text_report(report_text: str, file_id: str) -> AnalysisResponse:
     Returns:
         AnalysisResponse with structured findings.
     """
-    client = _get_openai_client()
+    _configure_gemini()
 
-    response = client.chat.completions.create(
-        model=settings.OPENAI_MODEL,
-        messages=[
-            {"role": "system", "content": TEXT_ANALYSIS_SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": TEXT_ANALYSIS_USER_PROMPT.format(report_text=report_text),
-            },
-        ],
-        temperature=0.1,  # Low temperature for consistent, factual output
-        response_format={"type": "json_object"},
+    model = genai.GenerativeModel(
+        model_name=settings.GEMINI_MODEL,
+        system_instruction=TEXT_ANALYSIS_SYSTEM_PROMPT,
+        generation_config=genai.types.GenerationConfig(
+            temperature=0.1,
+            response_mime_type="application/json",
+        ),
     )
 
-    result = _parse_ai_response(response.choices[0].message.content or "{}")
+    user_prompt = TEXT_ANALYSIS_USER_PROMPT.format(report_text=report_text)
+    response = model.generate_content(user_prompt)
+
+    result = _parse_ai_response(response.text)
     return _build_analysis_response(result, file_id, report_text)
 
 
 def analyze_image_report(image_path: str, file_id: str) -> AnalysisResponse:
     """
-    Analyze an image-based medical report using OpenAI GPT-4 Vision.
+    Analyze an image-based medical report using Google Gemini Vision.
 
     Args:
         image_path: Path to the image file.
@@ -91,46 +92,41 @@ def analyze_image_report(image_path: str, file_id: str) -> AnalysisResponse:
     Returns:
         AnalysisResponse with structured findings.
     """
-    client = _get_openai_client()
+    _configure_gemini()
 
-    # Read and encode the image
-    with open(image_path, "rb") as f:
-        image_data = base64.b64encode(f.read()).decode("utf-8")
+    model = genai.GenerativeModel(
+        model_name=settings.GEMINI_VISION_MODEL,
+        system_instruction=IMAGE_ANALYSIS_SYSTEM_PROMPT,
+        generation_config=genai.types.GenerationConfig(
+            temperature=0.1,
+            response_mime_type="application/json",
+        ),
+    )
+
+    # Read the image file
+    image_path_obj = Path(image_path)
+    image_data = image_path_obj.read_bytes()
 
     # Determine MIME type
-    ext = image_path.rsplit(".", 1)[-1].lower()
+    ext = image_path_obj.suffix.lower().lstrip(".")
     mime_map = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg"}
     mime_type = mime_map.get(ext, "image/png")
 
-    response = client.chat.completions.create(
-        model=settings.OPENAI_VISION_MODEL,
-        messages=[
-            {"role": "system", "content": IMAGE_ANALYSIS_SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": IMAGE_ANALYSIS_USER_PROMPT},
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:{mime_type};base64,{image_data}",
-                            "detail": "high",
-                        },
-                    },
-                ],
-            },
-        ],
-        temperature=0.1,
-        max_tokens=4096,
-    )
+    # Create image part for Gemini
+    image_part = {
+        "mime_type": mime_type,
+        "data": image_data,
+    }
 
-    result = _parse_ai_response(response.choices[0].message.content or "{}")
+    response = model.generate_content([IMAGE_ANALYSIS_USER_PROMPT, image_part])
+
+    result = _parse_ai_response(response.text)
     return _build_analysis_response(result, file_id)
 
 
 def _normalize_severity(raw: str) -> SeverityLevel:
     """
-    Normalize GPT's severity string to a valid SeverityLevel.
+    Normalize AI severity string to a valid SeverityLevel.
     Handles unexpected values like 'borderline', 'slightly elevated', etc.
     """
     raw = raw.lower().strip()
@@ -141,7 +137,7 @@ def _normalize_severity(raw: str) -> SeverityLevel:
     except ValueError:
         pass
 
-    # Map common GPT variations to valid levels
+    # Map common AI variations to valid levels
     mapping = {
         "borderline": SeverityLevel.LOW,
         "slightly elevated": SeverityLevel.LOW,

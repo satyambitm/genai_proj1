@@ -1,14 +1,14 @@
 """
 Simplifier Service — Transforms medical reports into patient-friendly language.
 
-Features:
-- Simplify technical medical jargon into plain language
-- Flag abnormalities with severity levels and explanations
-- Generate follow-up questions for the doctor
+Uses Google Gemini 2.0 Flash for:
+- Simplifying technical medical jargon into plain language
+- Flagging abnormalities with severity levels and explanations
+- Generating follow-up questions for the doctor
 """
 
 import json
-from openai import OpenAI
+import google.generativeai as genai
 
 from app.config import get_settings
 from app.models.schemas import (
@@ -20,9 +20,9 @@ from app.models.schemas import (
 settings = get_settings()
 
 
-def _get_openai_client() -> OpenAI:
-    """Create an OpenAI client instance."""
-    return OpenAI(api_key=settings.OPENAI_API_KEY)
+def _configure_gemini():
+    """Configure the Gemini API client."""
+    genai.configure(api_key=settings.GEMINI_API_KEY)
 
 
 SIMPLIFY_SYSTEM_PROMPT = """You are a friendly medical communication expert. Your job is to take medical report analysis and transform it into language that a patient with no medical background can easily understand.
@@ -71,7 +71,16 @@ def simplify_report(analysis_summary: str, findings_json: str, file_id: str) -> 
         SimplifiedReport with plain-language summary, flagged abnormalities,
         and suggested follow-up questions.
     """
-    client = _get_openai_client()
+    _configure_gemini()
+
+    model = genai.GenerativeModel(
+        model_name=settings.GEMINI_MODEL,
+        system_instruction=SIMPLIFY_SYSTEM_PROMPT,
+        generation_config=genai.types.GenerationConfig(
+            temperature=0.3,
+            response_mime_type="application/json",
+        ),
+    )
 
     user_prompt = f"""Please simplify the following medical report analysis for a patient:
 
@@ -83,27 +92,10 @@ DETAILED FINDINGS:
 
 Transform this into simple, patient-friendly language. Flag any abnormalities and suggest follow-up questions."""
 
-    response = client.chat.completions.create(
-        model=settings.OPENAI_MODEL,
-        messages=[
-            {"role": "system", "content": SIMPLIFY_SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ],
-        temperature=0.3,
-        response_format={"type": "json_object"},
-    )
+    response = model.generate_content(user_prompt)
 
     # Parse response
-    text = response.choices[0].message.content or "{}"
-    text = text.strip()
-    if text.startswith("```json"):
-        text = text[7:]
-    elif text.startswith("```"):
-        text = text[3:]
-    if text.endswith("```"):
-        text = text[:-3]
-
-    result = json.loads(text.strip())
+    result = json.loads(response.text)
 
     # Build abnormality flags
     abnormalities = []
@@ -112,7 +104,7 @@ Transform this into simple, patient-friendly language. Flag any abnormalities an
         try:
             severity = SeverityLevel(severity_str)
         except ValueError:
-            # Map common GPT variations
+            # Map common AI variations
             fallback = {
                 "borderline": SeverityLevel.LOW,
                 "slightly elevated": SeverityLevel.LOW,

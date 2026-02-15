@@ -650,7 +650,7 @@ st.markdown("""
 <div class="hero">
     <div class="hero-pill">
         <span class="hero-pill-dot"></span>
-        Powered by GPT-4 Vision &amp; RAG
+        Powered by Gemini 2.0 Flash &amp; RAG
     </div>
     <h1>Your Medical Reports,<br>Simplified by AI</h1>
     <p>
