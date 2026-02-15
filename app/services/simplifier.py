@@ -1,14 +1,16 @@
 """
 Simplifier Service — Transforms medical reports into patient-friendly language.
 
-Uses Google Gemini 2.0 Flash for:
+Uses Groq API (Llama 3.3 70B) for:
 - Simplifying technical medical jargon into plain language
 - Flagging abnormalities with severity levels and explanations
 - Generating follow-up questions for the doctor
 """
 
 import json
-import google.generativeai as genai
+import time
+
+from groq import Groq
 
 from app.config import get_settings
 from app.models.schemas import (
@@ -18,11 +20,6 @@ from app.models.schemas import (
 )
 
 settings = get_settings()
-
-
-def _configure_gemini():
-    """Configure the Gemini API client."""
-    genai.configure(api_key=settings.GEMINI_API_KEY)
 
 
 SIMPLIFY_SYSTEM_PROMPT = """You are a friendly medical communication expert. Your job is to take medical report analysis and transform it into language that a patient with no medical background can easily understand.
@@ -71,16 +68,7 @@ def simplify_report(analysis_summary: str, findings_json: str, file_id: str) -> 
         SimplifiedReport with plain-language summary, flagged abnormalities,
         and suggested follow-up questions.
     """
-    _configure_gemini()
-
-    model = genai.GenerativeModel(
-        model_name=settings.GEMINI_MODEL,
-        system_instruction=SIMPLIFY_SYSTEM_PROMPT,
-        generation_config=genai.types.GenerationConfig(
-            temperature=0.3,
-            response_mime_type="application/json",
-        ),
-    )
+    client = Groq(api_key=settings.GROQ_API_KEY, timeout=120.0)
 
     user_prompt = f"""Please simplify the following medical report analysis for a patient:
 
@@ -92,10 +80,43 @@ DETAILED FINDINGS:
 
 Transform this into simple, patient-friendly language. Flag any abnormalities and suggest follow-up questions."""
 
-    response = model.generate_content(user_prompt)
+    # Retry with model fallback
+    models_to_try = [settings.GROQ_MODEL, "llama-3.1-8b-instant", "gemma2-9b-it"]
+    response_text = None
+
+    for model_name in models_to_try:
+        for attempt in range(3):
+            try:
+                response = client.chat.completions.create(
+                    model=model_name,
+                    messages=[
+                        {"role": "system", "content": SIMPLIFY_SYSTEM_PROMPT},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    temperature=0.3,
+                    max_tokens=4096,
+                    response_format={"type": "json_object"},
+                )
+                response_text = response.choices[0].message.content
+                break
+            except Exception as e:
+                error_str = str(e).lower()
+                if "429" in str(e) or "rate" in error_str or "limit" in error_str:
+                    if attempt < 2:
+                        time.sleep((attempt + 1) * 3)
+                        continue
+                    else:
+                        break
+                else:
+                    raise e
+        if response_text:
+            break
+
+    if not response_text:
+        raise Exception("All models and retries exhausted for simplification.")
 
     # Parse response
-    result = json.loads(response.text)
+    result = json.loads(response_text)
 
     # Build abnormality flags
     abnormalities = []
@@ -104,7 +125,6 @@ Transform this into simple, patient-friendly language. Flag any abnormalities an
         try:
             severity = SeverityLevel(severity_str)
         except ValueError:
-            # Map common AI variations
             fallback = {
                 "borderline": SeverityLevel.LOW,
                 "slightly elevated": SeverityLevel.LOW,

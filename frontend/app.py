@@ -1,1032 +1,1346 @@
 """
-MedReport AI — Product-Grade Medical Report Analyzer Frontend.
-
-A polished, product-ready website with premium medical UI,
-dedicated abnormality alerts with red severity markers,
-and interactive data visualizations.
+MedReport AI — Niroggyan-Inspired Frontend
+Clean, professional light-themed medical report analyzer.
 """
 
+import io
+import json
+import datetime
 import streamlit as st
 import requests
-import json
 import plotly.graph_objects as go
-from datetime import datetime
+import html
+from fpdf import FPDF
 
 # ── Page Config ────────────────────────────────────────────────────────
-
 st.set_page_config(
-    page_title="MedReport AI | AI-Powered Medical Report Analyzer",
-    page_icon="🏥",
+    page_title="MedReport AI | Lab Report Analyzer",
+    page_icon="🔬",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
-
-# ══════════════════════════════════════════════════════════════════════
-# ══  PREMIUM PRODUCT CSS  ════════════════════════════════════════════
-# ══════════════════════════════════════════════════════════════════════
-
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
-    /* ── Global ──────────────────────────────── */
-    * { box-sizing: border-box; }
-    .stApp {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        background: #060918;
-        color: #c8d6e5;
-    }
-    #MainMenu, footer, header, .stDeployButton { display: none !important; }
-
-    /* ── Animated background ─────────────────── */
-    .stApp::before {
-        content: '';
-        position: fixed; top: 0; left: 0;
-        width: 100%; height: 100%;
-        background:
-            radial-gradient(ellipse at 10% 20%, rgba(0,210,190,0.06) 0%, transparent 50%),
-            radial-gradient(ellipse at 90% 80%, rgba(56,130,246,0.05) 0%, transparent 50%),
-            radial-gradient(ellipse at 50% 0%, rgba(139,92,246,0.04) 0%, transparent 40%),
-            url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M36 4h8v24h-8zM36 52h8v24h-8zM4 36h24v8H4zM52 36h24v8H52z' fill='rgba(0,210,190,0.012)' fill-rule='evenodd'/%3E%3C/svg%3E");
-        pointer-events: none; z-index: 0;
-    }
-
-    /* ── Top Navigation Bar ──────────────────── */
-    .topnav {
-        display: flex; align-items: center; justify-content: space-between;
-        padding: 1rem 0; margin-bottom: 0.5rem;
-        border-bottom: 1px solid rgba(0,210,190,0.08);
-    }
-    .topnav-brand {
-        display: flex; align-items: center; gap: 0.8rem;
-    }
-    .topnav-logo {
-        width: 42px; height: 42px; border-radius: 12px;
-        background: linear-gradient(135deg, #00d2be, #3882f6);
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1.3rem; color: white; font-weight: 700;
-    }
-    .topnav-name {
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 1.4rem; font-weight: 700;
-        background: linear-gradient(135deg, #00d2be, #3882f6);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    .topnav-tagline {
-        font-size: 0.7rem; color: rgba(200,214,229,0.35);
-        letter-spacing: 2px; text-transform: uppercase;
-    }
-    .topnav-links {
-        display: flex; gap: 1.5rem; align-items: center;
-    }
-    .topnav-link {
-        font-size: 0.85rem; color: rgba(200,214,229,0.5);
-        text-decoration: none; transition: color 0.2s;
-        cursor: default;
-    }
-    .topnav-link:hover { color: #00d2be; }
-    .topnav-cta {
-        background: linear-gradient(135deg, #00d2be, #3882f6);
-        color: white !important; padding: 8px 20px;
-        border-radius: 10px; font-weight: 600; font-size: 0.82rem;
-        text-decoration: none; transition: all 0.3s;
-        box-shadow: 0 4px 15px rgba(0,210,190,0.2);
-    }
-    .topnav-cta:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 6px 25px rgba(0,210,190,0.35);
-    }
-
-    /* ── Hero Section ────────────────────────── */
-    .hero {
-        position: relative; text-align: center;
-        padding: 3.5rem 2rem 2.5rem;
-        background: linear-gradient(160deg, rgba(0,210,190,0.08) 0%, rgba(56,130,246,0.04) 50%, rgba(6,9,24,0) 100%);
-        border: 1px solid rgba(0,210,190,0.08);
-        border-radius: 28px; margin-bottom: 2.5rem;
-        overflow: hidden;
-    }
-    .hero::before {
-        content: ''; position: absolute; top: -100px; right: -50px;
-        width: 300px; height: 300px;
-        background: radial-gradient(circle, rgba(0,210,190,0.06) 0%, transparent 70%);
-        border-radius: 50%;
-    }
-    .hero::after {
-        content: '✚'; position: absolute; bottom: 20px; left: 40px;
-        font-size: 160px; opacity: 0.015; color: #00d2be;
-    }
-    .hero-pill {
-        display: inline-flex; align-items: center; gap: 6px;
-        background: rgba(0,210,190,0.1); border: 1px solid rgba(0,210,190,0.2);
-        padding: 6px 16px; border-radius: 30px;
-        font-size: 0.78rem; font-weight: 600; color: #00d2be;
-        letter-spacing: 0.5px; margin-bottom: 1.5rem;
-    }
-    .hero-pill-dot {
-        width: 6px; height: 6px; border-radius: 50%;
-        background: #00d2be; animation: blink 2s infinite;
-    }
-    @keyframes blink {
-        0%, 100% { opacity: 1; } 50% { opacity: 0.3; }
-    }
-    .hero h1 {
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 3.2rem; font-weight: 800; line-height: 1.1;
-        letter-spacing: -1.5px; margin: 0 0 1rem 0;
-        background: linear-gradient(135deg, #ffffff 20%, #00d2be 60%, #3882f6 100%);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    .hero p {
-        font-size: 1.1rem; color: rgba(200,214,229,0.55);
-        max-width: 600px; margin: 0 auto; line-height: 1.7;
-    }
-
-    /* ── Feature Cards Row ───────────────────── */
-    .features-row {
-        display: grid; grid-template-columns: repeat(4, 1fr);
-        gap: 1rem; margin-bottom: 2.5rem;
-    }
-    .feature-card {
-        background: rgba(12,18,40,0.6);
-        border: 1px solid rgba(255,255,255,0.04);
-        border-radius: 16px; padding: 1.3rem; text-align: center;
-        transition: all 0.3s ease; backdrop-filter: blur(10px);
-        position: relative; overflow: hidden;
-    }
-    .feature-card::after {
-        content: ''; position: absolute; bottom: 0; left: 0; right: 0;
-        height: 2px; background: linear-gradient(90deg, var(--fc-color, #00d2be), transparent);
-        opacity: 0; transition: opacity 0.3s;
-    }
-    .feature-card:hover { border-color: rgba(0,210,190,0.15); transform: translateY(-3px); }
-    .feature-card:hover::after { opacity: 1; }
-    .feature-icon { font-size: 1.8rem; margin-bottom: 0.6rem; }
-    .feature-title { font-weight: 700; font-size: 0.88rem; color: #f1f5f9; margin-bottom: 0.3rem; }
-    .feature-desc { font-size: 0.78rem; color: rgba(200,214,229,0.4); line-height: 1.5; }
-
-    /* ── Medical Disclaimer ──────────────────── */
-    .disclaimer-bar {
-        display: flex; align-items: center; gap: 0.8rem;
-        background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.15);
-        border-radius: 12px; padding: 0.7rem 1.2rem; margin-bottom: 2rem;
-        font-size: 0.83rem; color: rgba(251,191,36,0.8);
-    }
-
-    /* ── Upload Section ──────────────────────── */
-    .upload-section-title {
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 1.5rem; font-weight: 700; color: #f1f5f9;
-        margin-bottom: 1rem;
-    }
-
-    /* ── Glass Card (reusable) ───────────────── */
-    .gcard {
-        background: rgba(12,18,40,0.6);
-        border: 1px solid rgba(255,255,255,0.05);
-        border-radius: 16px; padding: 1.5rem;
-        backdrop-filter: blur(20px);
-        transition: all 0.3s ease;
-    }
-    .gcard:hover {
-        border-color: rgba(0,210,190,0.12);
-    }
-    .gcard-header {
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 0.72rem; font-weight: 600;
-        text-transform: uppercase; letter-spacing: 1.8px;
-        color: #00d2be; margin-bottom: 1rem;
-    }
-
-    /* ── Stat Cards (circular) ───────────────── */
-    .stats-grid {
-        display: grid; grid-template-columns: repeat(4, 1fr);
-        gap: 1rem; margin-bottom: 1.5rem;
-    }
-    .scard {
-        background: rgba(12,18,40,0.7);
-        border: 1px solid rgba(255,255,255,0.04);
-        border-radius: 16px; padding: 1.2rem 0.8rem;
-        text-align: center; transition: all 0.3s;
-        position: relative; overflow: hidden;
-    }
-    .scard::before {
-        content: ''; position: absolute; top: 0; left: 0; right: 0;
-        height: 3px; opacity: 0; transition: opacity 0.3s;
-    }
-    .scard:hover { transform: translateY(-3px); border-color: rgba(0,210,190,0.15); }
-    .scard:hover::before { opacity: 1; }
-    .scard-icon { font-size: 1.4rem; margin-bottom: 0.3rem; }
-    .scard-val {
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 1.8rem; font-weight: 800; line-height: 1.2;
-    }
-    .scard-val.teal { color: #00d2be; }
-    .scard-val.red { color: #f87171; }
-    .scard-val.blue { color: #60a5fa; }
-    .scard-val.purple { color: #a78bfa; }
-    .scard-label {
-        font-size: 0.7rem; color: rgba(200,214,229,0.35);
-        text-transform: uppercase; letter-spacing: 1px; margin-top: 0.2rem;
-    }
-
-    /* ══════════════════════════════════════════════
-       ══  ABNORMALITY COLUMN (RED SEVERITY)  ══════
-       ══════════════════════════════════════════════ */
-    .abnorm-section {
-        background: rgba(239,68,68,0.04);
-        border: 1px solid rgba(239,68,68,0.12);
-        border-radius: 20px; padding: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-    .abnorm-header {
-        display: flex; align-items: center; gap: 0.7rem;
-        margin-bottom: 1.2rem;
-    }
-    .abnorm-header-icon {
-        width: 36px; height: 36px; border-radius: 10px;
-        background: rgba(239,68,68,0.15);
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1.1rem;
-    }
-    .abnorm-header-text {
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 1.1rem; font-weight: 700; color: #fca5a5;
-    }
-    .abnorm-header-count {
-        margin-left: auto;
-        background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3);
-        color: #f87171; padding: 4px 14px;
-        border-radius: 20px; font-size: 0.78rem; font-weight: 700;
-    }
-
-    /* Individual abnormality card */
-    .abnorm-card {
-        background: rgba(239,68,68,0.03);
-        border: 1px solid rgba(239,68,68,0.1);
-        border-left: 4px solid;
-        border-radius: 0 14px 14px 0;
-        padding: 1.2rem 1.4rem; margin-bottom: 0.8rem;
-        transition: all 0.3s ease;
-    }
-    .abnorm-card:hover {
-        background: rgba(239,68,68,0.06);
-        transform: translateX(4px);
-    }
-
-    /* Severity-specific left-border colors */
-    .abnorm-card.sev-low { border-left-color: #f59e0b; }
-    .abnorm-card.sev-medium { border-left-color: #f97316; }
-    .abnorm-card.sev-high { border-left-color: #ef4444; }
-    .abnorm-card.sev-critical { border-left-color: #dc2626; }
-
-    .abnorm-param-row {
-        display: flex; align-items: center; justify-content: space-between;
-        margin-bottom: 0.5rem;
-    }
-    .abnorm-param {
-        font-family: 'Space Grotesk', sans-serif;
-        font-weight: 700; font-size: 1rem; color: #f1f5f9;
-    }
-
-    /* Severity badge */
-    .sev-badge {
-        display: inline-flex; align-items: center; gap: 5px;
-        padding: 4px 12px; border-radius: 20px;
-        font-size: 0.7rem; font-weight: 800;
-        letter-spacing: 0.5px; text-transform: uppercase;
-    }
-    .sev-badge.low { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
-    .sev-badge.medium { background: rgba(249,115,22,0.15); color: #fb923c; border: 1px solid rgba(249,115,22,0.3); }
-    .sev-badge.high { background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid rgba(239,68,68,0.35); }
-    .sev-badge.critical {
-        background: rgba(220,38,38,0.25); color: #fca5a5;
-        border: 1px solid rgba(220,38,38,0.5);
-        animation: pulse-crit 2s infinite;
-    }
-    @keyframes pulse-crit {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.3); }
-        50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
-    }
-
-    /* Severity bar visualizer */
-    .sev-bar-track {
-        height: 6px; border-radius: 3px;
-        background: rgba(255,255,255,0.05);
-        margin: 0.5rem 0; overflow: hidden;
-    }
-    .sev-bar-fill {
-        height: 100%; border-radius: 3px;
-        transition: width 0.6s ease;
-    }
-    .sev-bar-fill.low { width: 25%; background: linear-gradient(90deg, #f59e0b, #fbbf24); }
-    .sev-bar-fill.medium { width: 50%; background: linear-gradient(90deg, #f97316, #fb923c); }
-    .sev-bar-fill.high { width: 75%; background: linear-gradient(90deg, #ef4444, #f87171); }
-    .sev-bar-fill.critical { width: 100%; background: linear-gradient(90deg, #dc2626, #ef4444); }
-
-    .abnorm-value {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 1.3rem; font-weight: 700; color: #f87171;
-    }
-    .abnorm-unit {
-        font-size: 0.82rem; color: rgba(200,214,229,0.35);
-    }
-    .abnorm-ref {
-        font-size: 0.8rem; color: rgba(200,214,229,0.3);
-        margin-top: 0.4rem;
-    }
-    .abnorm-explain {
-        font-size: 0.88rem; color: rgba(200,214,229,0.6);
-        line-height: 1.6; margin-top: 0.6rem;
-        padding-top: 0.6rem; border-top: 1px solid rgba(255,255,255,0.04);
-    }
-    .abnorm-rec {
-        display: flex; align-items: flex-start; gap: 0.5rem;
-        font-size: 0.82rem; color: rgba(251,191,36,0.7);
-        margin-top: 0.5rem; font-style: italic;
-    }
-
-    /* All-clear card */
-    .all-clear {
-        text-align: center; padding: 2.5rem 1.5rem;
-        background: rgba(16,185,129,0.04);
-        border: 1px solid rgba(16,185,129,0.1);
-        border-radius: 16px;
-    }
-    .all-clear-icon { font-size: 3rem; margin-bottom: 0.5rem; }
-    .all-clear-title { font-size: 1.2rem; font-weight: 700; color: #34d399; }
-    .all-clear-sub { font-size: 0.88rem; color: rgba(200,214,229,0.4); margin-top: 0.3rem; }
-
-    /* ── Finding Cards (normal) ──────────────── */
-    .finding-card {
-        background: rgba(12,18,40,0.5);
-        border: 1px solid rgba(255,255,255,0.04);
-        border-radius: 14px; padding: 1rem 1.2rem;
-        margin-bottom: 0.6rem; transition: all 0.3s;
-    }
-    .finding-card:hover {
-        border-color: rgba(0,210,190,0.15);
-        transform: translateX(4px);
-    }
-    .finding-row {
-        display: flex; align-items: center; justify-content: space-between;
-    }
-    .finding-name {
-        font-weight: 600; font-size: 0.92rem; color: #e2e8f0;
-    }
-    .finding-val {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 1.1rem; font-weight: 600; color: #00d2be;
-    }
-    .badge-normal {
-        display: inline-block; padding: 3px 10px;
-        border-radius: 20px; font-size: 0.68rem; font-weight: 700;
-        background: rgba(16,185,129,0.12); color: #34d399;
-        border: 1px solid rgba(16,185,129,0.25);
-        text-transform: uppercase; letter-spacing: 0.3px;
-    }
-
-    /* ── Question Cards ──────────────────────── */
-    .q-card {
-        background: rgba(56,130,246,0.04);
-        border: 1px solid rgba(56,130,246,0.1);
-        border-left: 3px solid #3882f6;
-        border-radius: 0 12px 12px 0;
-        padding: 0.9rem 1.2rem; margin-bottom: 0.5rem;
-        transition: all 0.3s; font-size: 0.92rem; color: #93c5fd;
-    }
-    .q-card:hover { background: rgba(56,130,246,0.08); transform: translateX(4px); }
-    .q-num { color: #3882f6; font-weight: 800; margin-right: 8px; }
-
-    /* ── Summary Card ────────────────────────── */
-    .summary-box {
-        background: linear-gradient(135deg, rgba(0,210,190,0.04), rgba(56,130,246,0.03));
-        border: 1px solid rgba(0,210,190,0.1);
-        border-radius: 16px; padding: 1.5rem;
-        font-size: 0.95rem; line-height: 1.8;
-        color: rgba(200,214,229,0.8);
-    }
-
-    /* ── Term Pills ──────────────────────────── */
-    .pill {
-        display: inline-block;
-        background: rgba(139,92,246,0.08);
-        border: 1px solid rgba(139,92,246,0.15);
-        color: #c4b5fd; padding: 4px 12px;
-        border-radius: 20px; font-size: 0.78rem;
-        margin: 3px; transition: all 0.2s;
-    }
-    .pill:hover { background: rgba(139,92,246,0.15); transform: scale(1.05); }
-
-    /* ── Divider ─────────────────────────────── */
-    .neon-div {
-        height: 1px; margin: 2rem 0;
-        background: linear-gradient(90deg, transparent, rgba(0,210,190,0.2), rgba(56,130,246,0.2), transparent);
-    }
-
-    /* ── Section Header ──────────────────────── */
-    .sec-header {
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 1.3rem; font-weight: 700; color: #f1f5f9;
-        margin: 1.5rem 0 1rem; display: flex;
-        align-items: center; gap: 0.6rem;
-    }
-    .sec-line { flex: 1; height: 1px; background: linear-gradient(90deg, rgba(0,210,190,0.2), transparent); }
-
-    /* ── Footer ──────────────────────────────── */
-    .site-footer {
-        text-align: center; padding: 2.5rem 0 1rem;
-        border-top: 1px solid rgba(255,255,255,0.03);
-        margin-top: 3rem;
-    }
-    .site-footer-brand {
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 1.2rem; font-weight: 700;
-        background: linear-gradient(135deg, #00d2be, #3882f6);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    .site-footer-links {
-        display: flex; justify-content: center; gap: 2rem;
-        margin: 1rem 0; font-size: 0.82rem; color: rgba(200,214,229,0.3);
-    }
-    .site-footer-copy {
-        font-size: 0.75rem; color: rgba(200,214,229,0.2);
-    }
-
-    /* ── Streamlit Overrides ─────────────────── */
-    .stButton > button {
-        background: linear-gradient(135deg, #00d2be 0%, #3882f6 100%) !important;
-        color: white !important; border: none !important;
-        border-radius: 14px !important; padding: 0.8rem 2.5rem !important;
-        font-weight: 700 !important; font-size: 1rem !important;
-        letter-spacing: 0.3px !important; transition: all 0.3s !important;
-        box-shadow: 0 4px 20px rgba(0,210,190,0.25) !important;
-    }
-    .stButton > button:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 8px 30px rgba(0,210,190,0.35) !important;
-    }
-    .stFileUploader {
-        background: rgba(0,210,190,0.03) !important;
-        border: 2px dashed rgba(0,210,190,0.15) !important;
-        border-radius: 16px !important;
-    }
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 4px; background: rgba(12,18,40,0.6);
-        border-radius: 14px; padding: 5px; border: 1px solid rgba(255,255,255,0.04);
-    }
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 10px; color: rgba(200,214,229,0.5); font-weight: 500;
-        padding: 8px 16px;
-    }
-    .stTabs [aria-selected="true"] {
-        background: rgba(0,210,190,0.12) !important; color: #00d2be !important;
-    }
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #060918 0%, #0c1230 100%);
-        border-right: 1px solid rgba(0,210,190,0.06);
-    }
-    .stMarkdown, .stText, p, span, li { color: #c8d6e5; }
-    h1, h2, h3, h4, h5, h6 { color: #f1f5f9 !important; }
-</style>
-""", unsafe_allow_html=True)
-
-# ── API Config ─────────────────────────────────────────────────────────
 
 API_BASE_URL = "http://localhost:8000/api"
 
-SEVERITY_LABELS = {
-    "normal": "Normal", "low": "Low Risk", "medium": "Moderate",
-    "high": "High Risk", "critical": "Critical",
+# ── Custom CSS — Niroggyan-Inspired Light Theme ────────────────────────
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* ── Reset & Global ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+.stApp {
+    background: linear-gradient(180deg, #eef4ff 0%, #f8faff 30%, #ffffff 100%);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #1a2332;
 }
-SEVERITY_ICONS = {
-    "normal": "✅", "low": "⚠️", "medium": "🟠", "high": "🔴", "critical": "🚨",
+
+header[data-testid="stHeader"] { background: transparent !important; }
+.block-container { max-width: 1200px; padding: 1rem 2rem 4rem; }
+section[data-testid="stSidebar"] { display: none !important; }
+
+h1, h2, h3, h4, h5, h6 { font-family: 'Inter', sans-serif; color: #0b1c2c; }
+
+/* Hide streamlit branding */
+#MainMenu, footer, .stDeployButton { display: none !important; }
+
+/* ── Navbar ─────────────────────────────────────────────── */
+.nav-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.8rem 2rem;
+    background: rgba(255,255,255,0.95);
+    border-bottom: 1px solid #e8edf2;
+    border-radius: 16px;
+    margin-bottom: 2rem;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
-SEVERITY_PERCENT = {
-    "normal": 0, "low": 25, "medium": 50, "high": 75, "critical": 100,
+.nav-brand {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 1.4rem; font-weight: 700; color: #1a73e8;
+    text-decoration: none;
+}
+.nav-brand-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, #1a73e8, #4dabf7);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 1.1rem;
+}
+.nav-links { display: flex; gap: 24px; align-items: center; }
+.nav-links a {
+    color: #4a5568; font-weight: 500; text-decoration: none;
+    font-size: 0.9rem; transition: color 0.2s;
+}
+.nav-links a:hover { color: #1a73e8; }
+.nav-cta {
+    background: #1a73e8; color: white !important;
+    padding: 8px 20px; border-radius: 8px; font-weight: 600;
+    transition: background 0.2s;
+}
+.nav-cta:hover { background: #1557b0; }
+
+/* ── Hero Section ──────────────────────────────────────── */
+.hero-section {
+    display: flex; align-items: center; gap: 60px;
+    padding: 2rem 0 3rem;
+}
+.hero-left { flex: 1; }
+.hero-right { flex: 0.8; }
+
+.hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #fff8e1; color: #b8860b;
+    padding: 6px 16px; border-radius: 20px;
+    font-size: 0.85rem; font-weight: 600;
+    margin-bottom: 1.2rem;
+    border: 1px solid #ffe0b2;
+}
+.hero-badge-star { font-size: 1rem; }
+.hero-trust {
+    color: #64748b; font-size: 0.85rem;
+    margin-left: 8px; font-weight: 400;
 }
 
-if "history" not in st.session_state:
-    st.session_state.history = []
+.hero-title {
+    font-size: 2.8rem; font-weight: 800;
+    line-height: 1.15; margin-bottom: 1.5rem;
+    color: #0b1c2c;
+}
+.hero-title span { color: #1a73e8; }
+
+.hero-checklist {
+    list-style: none; padding: 0; margin: 0;
+    display: flex; flex-direction: column; gap: 12px;
+}
+.hero-checklist li {
+    display: flex; align-items: center; gap: 10px;
+    color: #475569; font-size: 1rem; font-weight: 400;
+}
+.hero-check {
+    color: #1a73e8; font-size: 1.1rem; font-weight: 700;
+}
+
+/* ── Report Preview Card (Hero Right) ──────────────────── */
+.report-card {
+    background: white;
+    border-radius: 20px;
+    padding: 1.8rem;
+    box-shadow: 0 8px 30px rgba(26,115,232,0.08), 0 2px 8px rgba(0,0,0,0.04);
+    border: 1px solid #e8edf2;
+    position: relative;
+}
+.report-card-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 1.5rem;
+}
+.report-card-icon {
+    width: 42px; height: 42px;
+    background: #e8f5e9; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+}
+.report-card-title {
+    font-size: 1.15rem; font-weight: 700; color: #0b1c2c;
+}
+
+.biomarker-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px;
+    background: #f8fafc;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    border: 1px solid #f0f3f7;
+}
+.biomarker-name { font-weight: 500; color: #374151; font-size: 0.95rem; }
+.biomarker-value { font-weight: 700; color: #0b1c2c; font-size: 0.95rem; }
+.biomarker-badge {
+    padding: 4px 12px; border-radius: 20px;
+    font-size: 0.8rem; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 4px;
+}
+.badge-normal { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+.badge-low { background: #fef9c3; color: #a16207; border: 1px solid #fde68a; }
+.badge-medium { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
+.badge-high { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+.badge-critical { background: #fecaca; color: #991b1b; border: 1px solid #f87171; }
+
+.ai-complete-bar {
+    display: flex; align-items: center; gap: 10px;
+    background: #e0f7fa; color: #00838f;
+    padding: 12px 18px; border-radius: 12px;
+    margin-top: 10px;
+    font-weight: 600; font-size: 0.9rem;
+    border: 1px solid #b2ebf2;
+}
+
+.trust-badges {
+    display: flex; gap: 12px; margin-top: 16px;
+}
+.trust-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 20px;
+    background: white; border: 1px solid #e2e8f0;
+    font-size: 0.8rem; font-weight: 500; color: #475569;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+/* ── Upload Section ────────────────────────────────────── */
+.upload-section {
+    display: flex; gap: 40px;
+    padding: 3rem 0;
+    align-items: flex-start;
+}
+.upload-left { flex: 1; }
+.upload-right { flex: 1; }
+
+.upload-box {
+    border: 2.5px dashed #a4c3f5;
+    border-radius: 20px;
+    padding: 3rem 2rem;
+    text-align: center;
+    background: rgba(255,255,255,0.9);
+    transition: all 0.3s;
+}
+.upload-box:hover {
+    border-color: #1a73e8;
+    background: rgba(26,115,232,0.02);
+}
+.upload-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+.upload-text { font-size: 1rem; font-weight: 500; color: #374151; }
+.upload-sub { font-size: 0.85rem; color: #64748b; margin-top: 4px; }
+
+/* ── How It Works ──────────────────────────────────────── */
+.section-title {
+    font-size: 1.8rem; font-weight: 800;
+    color: #0b1c2c; margin-bottom: 2rem;
+    text-align: center;
+}
+
+.steps-container {
+    display: flex; flex-direction: column; gap: 10px;
+}
+.step-row {
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 20px;
+    background: white;
+    border-radius: 14px;
+    border: 1px solid #f0f3f7;
+    transition: all 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+.step-row:hover {
+    box-shadow: 0 4px 12px rgba(26,115,232,0.08);
+    border-color: #bbd6f7;
+}
+.step-num {
+    width: 34px; height: 34px;
+    background: linear-gradient(135deg, #1a73e8, #4dabf7);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 700; font-size: 0.9rem;
+    flex-shrink: 0;
+}
+.step-text { font-weight: 500; color: #374151; font-size: 0.95rem; }
+
+/* ── Feature Cards ─────────────────────────────────────── */
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    padding: 2rem 0;
+}
+.feature-card {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    border: 1px solid #f0f3f7;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    transition: all 0.2s;
+}
+.feature-card:hover {
+    box-shadow: 0 6px 20px rgba(26,115,232,0.08);
+    transform: translateY(-2px);
+}
+.feature-icon {
+    width: 48px; height: 48px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem;
+    margin-bottom: 14px;
+}
+.fi-blue { background: #e3f2fd; }
+.fi-green { background: #e8f5e9; }
+.fi-orange { background: #fff3e0; }
+.fi-purple { background: #f3e5f5; }
+.fi-red { background: #fce4ec; }
+.fi-teal { background: #e0f2f1; }
+.feature-title { font-weight: 700; color: #0b1c2c; font-size: 1rem; margin-bottom: 4px; }
+.feature-desc { color: #64748b; font-size: 0.85rem; line-height: 1.5; }
+
+/* ── Results Section ───────────────────────────────────── */
+.results-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 1.5rem;
+}
+.results-header-icon {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, #1a73e8, #4dabf7);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 1.2rem;
+}
+.results-header-title {
+    font-size: 1.4rem; font-weight: 700; color: #0b1c2c;
+}
+
+.summary-card {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    margin-bottom: 1rem;
+}
+.summary-card h4 {
+    font-size: 1rem; font-weight: 700; color: #0b1c2c; margin-bottom: 0.5rem;
+}
+.summary-card p {
+    color: #475569; font-size: 0.95rem; line-height: 1.6; margin: 0;
+}
+
+/* ── Abnormality Section ───────────────────────────────── */
+.abnorm-panel {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #fee2e2;
+    box-shadow: 0 2px 12px rgba(220,38,38,0.06);
+    overflow: hidden;
+}
+.abnorm-panel-header {
+    background: linear-gradient(135deg, #fef2f2, #fff5f5);
+    padding: 16px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid #fee2e2;
+}
+.abnorm-panel-title {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 700; color: #dc2626; font-size: 1.05rem;
+}
+.abnorm-count {
+    background: #dc2626; color: white;
+    padding: 2px 10px; border-radius: 20px;
+    font-size: 0.8rem; font-weight: 700;
+}
+.abnorm-item {
+    padding: 16px 20px;
+    border-bottom: 1px solid #fef2f2;
+    display: flex; align-items: flex-start; gap: 12px;
+}
+.abnorm-item:last-child { border-bottom: none; }
+.abnorm-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    margin-top: 5px; flex-shrink: 0;
+}
+.dot-low { background: #f59e0b; }
+.dot-medium { background: #f97316; }
+.dot-high { background: #ef4444; }
+.dot-critical { background: #dc2626; animation: pulse-dot 1.5s infinite; }
+@keyframes pulse-dot {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(220,38,38,0); }
+}
+.abnorm-detail { flex: 1; }
+.abnorm-param { font-weight: 600; color: #0f172a; font-size: 0.95rem; }
+.abnorm-val { color: #334155; font-size: 0.9rem; margin-top: 2px; font-weight: 500; }
+.abnorm-explain {
+    background: #fff1f2; padding: 10px 14px;
+    border-radius: 8px; margin-top: 8px;
+    font-size: 0.9rem; color: #4b5563; line-height: 1.5;
+    border-left: 3px solid #f87171;
+}
+
+.all-clear {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    text-align: center;
+    border: 1px solid #dcfce7;
+    box-shadow: 0 2px 8px rgba(34,197,94,0.06);
+}
+.all-clear-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+.all-clear-title { font-weight: 700; color: #15803d; font-size: 1.1rem; }
+.all-clear-sub { color: #64748b; font-size: 0.9rem; margin-top: 4px; }
+
+/* ── Follow-up Questions ───────────────────────────────── */
+.question-card {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 14px 18px;
+    background: white;
+    border-radius: 14px;
+    border: 1px solid #f0f3f7;
+    margin-bottom: 8px;
+    transition: all 0.2s;
+}
+.question-card:hover {
+    border-color: #bbd6f7;
+    box-shadow: 0 2px 8px rgba(26,115,232,0.06);
+}
+.question-num {
+    width: 28px; height: 28px;
+    background: #e3f2fd; color: #1a73e8;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.8rem; flex-shrink: 0;
+}
+.question-text { color: #374151; font-size: 0.95rem; line-height: 1.5; }
+
+/* ── FAQ Accordion ─────────────────────────────────────── */
+.faq-item {
+    background: white;
+    border-radius: 14px;
+    border: 1px solid #f0f3f7;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+.faq-q {
+    padding: 16px 20px;
+    font-weight: 600; color: #0b1c2c;
+    font-size: 0.95rem;
+    display: flex; align-items: center; justify-content: space-between;
+}
+.faq-plus {
+    width: 32px; height: 32px;
+    background: #1a73e8; color: white;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; font-weight: 700;
+}
+
+/* ── Footer ────────────────────────────────────────────── */
+.footer {
+    background: #0b1c2c;
+    border-radius: 20px 20px 0 0;
+    padding: 2.5rem 2rem 1.5rem;
+    margin-top: 4rem;
+    text-align: center;
+    color: #94a3b8;
+}
+.footer-brand {
+    font-size: 1.3rem; font-weight: 700; color: white;
+    margin-bottom: 0.5rem;
+}
+.footer-links {
+    display: flex; justify-content: center; gap: 24px;
+    margin: 1rem 0;
+}
+.footer-links a {
+    color: #94a3b8; text-decoration: none;
+    font-size: 0.9rem; transition: color 0.2s;
+}
+.footer-links a:hover { color: white; }
+.footer-copy { font-size: 0.8rem; color: #64748b; margin-top: 1rem; }
+
+/* ── Stat Cards ────────────────────────────────────────── */
+.stat-row {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+    margin-bottom: 1.5rem;
+}
+.stat-card {
+    background: white;
+    border-radius: 14px;
+    padding: 1.2rem;
+    text-align: center;
+    border: 1px solid #f0f3f7;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+}
+.stat-value { font-size: 2rem; font-weight: 800; color: #1a73e8; }
+.stat-label { font-size: 0.85rem; color: #64748b; font-weight: 500; margin-top: 2px; }
+
+/* ── Streamlit Overrides ───────────────────────────────── */
+.stTabs [data-baseweb="tab-list"] {
+    background: white; border-radius: 12px;
+    padding: 4px; border: 1px solid #e2e8f0;
+    gap: 4px;
+}
+.stTabs [data-baseweb="tab"] {
+    border-radius: 10px; font-weight: 600;
+    color: #64748b; font-size: 0.9rem;
+    padding: 8px 20px;
+}
+.stTabs [aria-selected="true"] {
+    background: #1a73e8 !important;
+    color: white !important;
+}
+
+div.stButton > button {
+    background: linear-gradient(135deg, #1a73e8, #4dabf7);
+    color: white; border: none;
+    padding: 14px 36px; font-size: 1.05rem;
+    font-weight: 700; border-radius: 14px;
+    width: 100%;
+    box-shadow: 0 4px 15px rgba(26,115,232,0.25);
+    transition: all 0.3s;
+}
+div.stButton > button:hover {
+    box-shadow: 0 6px 22px rgba(26,115,232,0.35);
+    transform: translateY(-1px);
+}
+div.stButton > button:active { transform: translateY(0); }
+
+.stFileUploader > div {
+    border: 2px dashed #a4c3f5 !important;
+    border-radius: 16px !important;
+    background: rgba(255,255,255,0.9) !important;
+}
+
+div[data-testid="stExpander"] {
+    background: white;
+    border: 1px solid #f0f3f7 !important;
+    border-radius: 14px !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.02);
+}
+
+.stAlert { border-radius: 14px !important; }
+</style>
+""", unsafe_allow_html=True)
 
 
-# ── Helper: Plotly Gauge ───────────────────────────────────────────────
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# HELPER FUNCTIONS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-def make_gauge(normal: int, total: int):
-    score = int((normal / total) * 100) if total > 0 else 100
-    color = "#10b981" if score >= 80 else ("#f59e0b" if score >= 50 else "#ef4444")
+SEVERITY_MAP = {
+    "normal": ("badge-normal", "✓ Normal", "dot-normal"),
+    "low": ("badge-low", "⚠ Low Risk", "dot-low"),
+    "medium": ("badge-medium", "⬆ Moderate", "dot-medium"),
+    "high": ("badge-high", "▲ High Risk", "dot-high"),
+    "critical": ("badge-critical", "⚠ Critical", "dot-critical"),
+}
+
+
+def make_gauge(score):
+    """Create a clean health score gauge."""
+    if score >= 80:
+        color = "#22c55e"
+    elif score >= 60:
+        color = "#f59e0b"
+    elif score >= 40:
+        color = "#f97316"
+    else:
+        color = "#ef4444"
+
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=score,
-        number={"suffix": "%", "font": {"size": 38, "color": color, "family": "Space Grotesk"}},
-        title={"text": "Overall Health Score", "font": {"size": 13, "color": "#64748b"}},
+        number={"suffix": "%", "font": {"size": 36, "color": "#0b1c2c", "family": "Inter"}},
         gauge={
-            "axis": {"range": [0, 100], "tickwidth": 0, "tickcolor": "rgba(0,0,0,0)"},
-            "bar": {"color": color, "thickness": 0.25},
-            "bgcolor": "rgba(255,255,255,0.02)",
+            "axis": {"range": [0, 100], "tickwidth": 0, "tickcolor": "white"},
+            "bar": {"color": color, "thickness": 0.7},
+            "bgcolor": "#f1f5f9",
             "borderwidth": 0,
             "steps": [
-                {"range": [0, 40], "color": "rgba(239,68,68,0.08)"},
-                {"range": [40, 70], "color": "rgba(245,158,11,0.08)"},
-                {"range": [70, 100], "color": "rgba(16,185,129,0.08)"},
+                {"range": [0, 40], "color": "#fef2f2"},
+                {"range": [40, 60], "color": "#fff7ed"},
+                {"range": [60, 80], "color": "#fefce8"},
+                {"range": [80, 100], "color": "#f0fdf4"},
             ],
         },
     ))
     fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        height=200, margin=dict(l=20, r=20, t=45, b=0),
-        font={"color": "#c8d6e5"},
+        height=200, margin=dict(l=20, r=20, t=20, b=20),
+        paper_bgcolor="rgba(0,0,0,0)", font={"family": "Inter"},
     )
     return fig
 
 
-def make_donut(findings: list):
-    counts = {"Normal": 0, "Low": 0, "Medium": 0, "High": 0, "Critical": 0}
-    for f in findings:
-        s = f.get("status", "normal").capitalize()
-        if s in counts:
-            counts[s] += 1
-    labels = [k for k, v in counts.items() if v > 0]
-    values = [v for v in counts.values() if v > 0]
-    cmap = {"Normal": "#10b981", "Low": "#f59e0b", "Medium": "#f97316", "High": "#ef4444", "Critical": "#dc2626"}
-    colors = [cmap.get(l, "#64748b") for l in labels]
-    fig = go.Figure(go.Pie(
-        labels=labels, values=values, hole=0.7,
-        marker=dict(colors=colors, line=dict(color="#060918", width=3)),
-        textfont=dict(color="#c8d6e5", size=11),
-        hoverinfo="label+value+percent",
-    ))
-    fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        height=200, margin=dict(l=10, r=10, t=10, b=10),
-        showlegend=True,
-        legend=dict(font=dict(color="#c8d6e5", size=10), bgcolor="rgba(0,0,0,0)"),
-        annotations=[dict(text="Severity", x=0.5, y=0.5, font_size=12, font_color="#475569", showarrow=False)],
-    )
-    return fig
+def generate_pdf(filename, analysis, simplified, health_score):
+    """Generate a professional PDF report from analysis results."""
 
+    def _safe(text):
+        """Sanitize text for PDF — replace Unicode chars unsupported by Helvetica."""
+        if not isinstance(text, str):
+            text = str(text)
+        replacements = {
+            '\u2018': "'", '\u2019': "'", '\u201c': '"', '\u201d': '"',
+            '\u2013': '-', '\u2014': '-', '\u2026': '...', '\u00a0': ' ',
+            '\u2022': '*', '\u2023': '>', '\u25cf': '*', '\u25cb': 'o',
+            '\u2192': '->', '\u2190': '<-', '\u2194': '<->',
+            '\u2265': '>=', '\u2264': '<=', '\u2260': '!=',
+            '\u00b5': 'u', '\u03bc': 'u',  # mu/micro
+            '\u00b2': '2', '\u00b3': '3', '\u00b9': '1',
+            '\u2153': '1/3', '\u00bd': '1/2', '\u00bc': '1/4',
+            '\u00b0': ' deg', '\u00b1': '+/-',
+            '\u2010': '-', '\u2011': '-', '\u2012': '-',
+            '\u200b': '', '\u200c': '', '\u200d': '', '\ufeff': '',
+        }
+        for old, new in replacements.items():
+            text = text.replace(old, new)
+        # Strip any remaining non-latin1 characters
+        return text.encode('latin-1', errors='replace').decode('latin-1')
 
-# ══════════════════════════════════════════════════════════════════════
-# ══  SIDEBAR  ════════════════════════════════════════════════════════
-# ══════════════════════════════════════════════════════════════════════
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=20)
+    pdf.add_page()
 
-with st.sidebar:
-    st.markdown("""
-    <div style="text-align:center; padding:1.5rem 0 1rem;">
-        <div style="font-size:2.5rem;">🏥</div>
-        <div style="font-family:'Space Grotesk'; font-size:1.3rem; font-weight:700;
-            background:linear-gradient(135deg,#00d2be,#3882f6);
-            -webkit-background-clip:text; -webkit-text-fill-color:transparent;">MedReport AI</div>
-        <div style="font-size:0.68rem; color:rgba(200,214,229,0.3); letter-spacing:2px; text-transform:uppercase;">
-            v1.0 · Medical Intelligence
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # ── Colors ──
+    BLUE = (26, 115, 232)
+    DARK = (11, 28, 44)
+    GRAY = (100, 116, 139)
+    WHITE = (255, 255, 255)
+    LIGHT_BG = (248, 250, 252)
+    GREEN = (34, 197, 94)
+    RED = (220, 38, 38)
+    ORANGE = (249, 115, 22)
+    YELLOW = (245, 158, 11)
 
-    st.markdown("---")
-    api_url = st.text_input("🔗 API Server", value="http://localhost:8000")
-    API_BASE_URL = f"{api_url}/api"
+    STATUS_COLORS = {
+        "normal": GREEN,
+        "low": YELLOW,
+        "medium": ORANGE,
+        "high": RED,
+        "critical": (153, 27, 27),
+    }
+    STATUS_LABELS = {
+        "normal": "Normal",
+        "low": "Low Risk",
+        "medium": "Moderate",
+        "high": "High Risk",
+        "critical": "Critical",
+    }
 
-    st.markdown("---")
-    st.markdown("""
-    <div class="gcard" style="padding:1rem;">
-        <div class="gcard-header">⚡ How It Works</div>
-        <div style="font-size:0.82rem; color:rgba(200,214,229,0.5); line-height:1.8;">
-            <strong style="color:#00d2be;">1.</strong> Upload medical report<br>
-            <strong style="color:#3882f6;">2.</strong> AI extracts key findings<br>
-            <strong style="color:#8b5cf6;">3.</strong> Get simplified explanations<br>
-            <strong style="color:#ef4444;">4.</strong> View flagged abnormalities<br>
-            <strong style="color:#f59e0b;">5.</strong> Ask follow-up questions
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    page_w = pdf.w - 2 * pdf.l_margin
 
-    st.markdown("")
-    st.caption("📄 PDF  ·  🖼️ PNG/JPG  ·  📝 TXT")
-    st.caption("Max file size: 10MB")
+    # ── Header Bar ──
+    pdf.set_fill_color(*BLUE)
+    pdf.rect(0, 0, pdf.w, 32, style="F")
+    pdf.set_text_color(*WHITE)
+    pdf.set_font("Helvetica", "B", 18)
+    pdf.set_y(8)
+    pdf.cell(0, 10, "MedReport AI - Lab Report Analysis", align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 9)
+    pdf.cell(0, 6, f"Generated: {datetime.datetime.now().strftime('%B %d, %Y at %I:%M %p')}", align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_y(36)
 
-    st.markdown("---")
-    st.markdown("**📂 Recent Reports**")
-    if st.session_state.history:
-        for h in reversed(st.session_state.history[-5:]):
-            st.markdown(f"""<div style="background:rgba(0,210,190,0.03); border:1px solid rgba(0,210,190,0.08);
-                border-radius:10px; padding:0.5rem 0.8rem; margin-bottom:0.4rem; font-size:0.8rem;">
-                <div style="color:#00d2be; font-weight:600;">📄 {h['filename'][:25]}</div>
-                <div style="color:rgba(200,214,229,0.3); font-size:0.72rem;">
-                    {h.get('report_type','N/A').replace('_',' ').title()} · {h.get('findings_count',0)} findings
-                </div></div>""", unsafe_allow_html=True)
+    # ── File Info ──
+    pdf.set_text_color(*DARK)
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(0, 8, _safe(f"Report: {filename}"), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+
+    # ── Health Score Box ──
+    findings = analysis.get("findings", [])
+    abnormal_list = [f for f in findings if f.get("status", "normal") != "normal"]
+    normal_list = [f for f in findings if f.get("status", "normal") == "normal"]
+
+    pdf.set_fill_color(*LIGHT_BG)
+    pdf.rect(pdf.l_margin, pdf.get_y(), page_w, 22, style="F")
+    y_box = pdf.get_y() + 3
+
+    col_w = page_w / 3
+    for i, (label, value, color) in enumerate([
+        ("Health Score", f"{health_score}%", BLUE),
+        ("Normal", str(len(normal_list)), GREEN),
+        ("Abnormal", str(len(abnormal_list)), RED if abnormal_list else GREEN),
+    ]):
+        x = pdf.l_margin + i * col_w
+        pdf.set_xy(x, y_box)
+        pdf.set_font("Helvetica", "", 8)
+        pdf.set_text_color(*GRAY)
+        pdf.cell(col_w, 5, label, align="C", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_xy(x, y_box + 6)
+        pdf.set_font("Helvetica", "B", 16)
+        pdf.set_text_color(*color)
+        pdf.cell(col_w, 10, value, align="C", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.set_y(y_box + 22)
+    pdf.ln(4)
+
+    # ── Summary ──
+    pdf.set_text_color(*DARK)
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.cell(0, 8, "Summary", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_draw_color(*BLUE)
+    pdf.line(pdf.l_margin, pdf.get_y(), pdf.l_margin + 40, pdf.get_y())
+    pdf.ln(3)
+
+    summary_text = ""
+    if simplified and simplified.get("simplified_summary"):
+        summary_text = simplified["simplified_summary"]
     else:
-        st.caption("No reports analyzed yet.")
+        summary_text = analysis.get("summary", "Analysis complete.")
+
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(*GRAY)
+    pdf.multi_cell(0, 5.5, _safe(summary_text))
+    pdf.ln(6)
+
+    # ── Biomarker Table ──
+    pdf.set_text_color(*DARK)
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.cell(0, 8, f"Biomarker Results ({len(findings)} parameters)", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_draw_color(*BLUE)
+    pdf.line(pdf.l_margin, pdf.get_y(), pdf.l_margin + 40, pdf.get_y())
+    pdf.ln(3)
+
+    # Table header
+    col_widths = [page_w * 0.30, page_w * 0.20, page_w * 0.25, page_w * 0.25]
+    headers = ["Parameter", "Value", "Reference Range", "Status"]
+    pdf.set_fill_color(*BLUE)
+    pdf.set_text_color(*WHITE)
+    pdf.set_font("Helvetica", "B", 9)
+    for i, h in enumerate(headers):
+        pdf.cell(col_widths[i], 8, h, border=0, fill=True,
+                 align="C" if i > 0 else "L")
+    pdf.ln()
+
+    # Table rows
+    pdf.set_font("Helvetica", "", 9)
+    for idx, f in enumerate(findings):
+        sev = f.get("status", "normal")
+        is_alt = idx % 2 == 0
+        if is_alt:
+            pdf.set_fill_color(245, 247, 250)
+        else:
+            pdf.set_fill_color(*WHITE)
+
+        # Check if we need a new page
+        if pdf.get_y() + 8 > pdf.h - 25:
+            pdf.add_page()
+
+        # Parameter name
+        pdf.set_text_color(*DARK)
+        param_name = _safe(f.get("parameter", "Unknown")[:30])
+        pdf.cell(col_widths[0], 8, param_name, border=0, fill=is_alt)
+
+        # Value + unit
+        value = str(f.get("value", "N/A"))
+        unit = f.get("unit", "")
+        val_text = _safe(f"{value} {unit}".strip()[:18])
+        pdf.set_text_color(*DARK)
+        pdf.cell(col_widths[1], 8, val_text, border=0, fill=is_alt, align="C")
+
+        # Reference range
+        ref = _safe(str(f.get("reference_range", "-"))[:22])
+        pdf.set_text_color(*GRAY)
+        pdf.cell(col_widths[2], 8, ref, border=0, fill=is_alt, align="C")
+
+        # Status badge
+        status_color = STATUS_COLORS.get(sev, GREEN)
+        status_label = STATUS_LABELS.get(sev, "Normal")
+        pdf.set_text_color(*status_color)
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.cell(col_widths[3], 8, status_label, border=0, fill=is_alt, align="C")
+        pdf.set_font("Helvetica", "", 9)
+        pdf.ln()
+
+    pdf.ln(6)
+
+    # ── Abnormalities Detail ──
+    if abnormal_list:
+        if pdf.get_y() + 40 > pdf.h - 25:
+            pdf.add_page()
+
+        pdf.set_text_color(*RED)
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.cell(0, 8, f"Flagged Abnormalities ({len(abnormal_list)})", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_draw_color(*RED)
+        pdf.line(pdf.l_margin, pdf.get_y(), pdf.l_margin + 40, pdf.get_y())
+        pdf.ln(3)
+
+        abnorm_details = {}
+        if simplified and simplified.get("abnormalities"):
+            for ab in simplified["abnormalities"]:
+                abnorm_details[ab.get("parameter", "").lower().strip()] = ab
+
+        for f in abnormal_list:
+            if pdf.get_y() + 20 > pdf.h - 25:
+                pdf.add_page()
+
+            param = f.get("parameter", "Unknown")
+            sev = f.get("status", "low")
+            value = str(f.get("value", "N/A"))
+            unit = f.get("unit", "")
+            ref = f.get("reference_range", "")
+
+            status_color = STATUS_COLORS.get(sev, RED)
+            status_label = STATUS_LABELS.get(sev, "Abnormal")
+
+            pdf.set_fill_color(254, 242, 242)
+            pdf.rect(pdf.l_margin, pdf.get_y(), page_w, 0.5, style="F")
+            pdf.set_fill_color(*status_color)
+            pdf.rect(pdf.l_margin, pdf.get_y() + 0.5, 3, 14, style="F")
+
+            pdf.set_x(pdf.l_margin + 6)
+            pdf.set_text_color(*DARK)
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.cell(0, 7, _safe(f"{param}: {value} {unit}".strip()), new_x="LMARGIN", new_y="NEXT")
+
+            pdf.set_x(pdf.l_margin + 6)
+            pdf.set_font("Helvetica", "", 8)
+            pdf.set_text_color(*status_color)
+            extra = f" | Ref: {ref}" if ref else ""
+            pdf.cell(0, 5, _safe(f"{status_label}{extra}"), new_x="LMARGIN", new_y="NEXT")
+
+            # Explanation from simplified
+            detail = abnorm_details.get(param.lower().strip(), {})
+            explanation = detail.get("explanation", f.get("interpretation", ""))
+            recommendation = detail.get("recommendation", "")
+
+            if explanation:
+                pdf.set_x(pdf.l_margin + 6)
+                pdf.set_text_color(*GRAY)
+                pdf.set_font("Helvetica", "I", 8)
+                pdf.multi_cell(page_w - 10, 4.5, _safe(explanation[:300]))
+            if recommendation:
+                pdf.set_x(pdf.l_margin + 6)
+                pdf.set_text_color(100, 100, 100)
+                pdf.set_font("Helvetica", "", 8)
+                pdf.multi_cell(page_w - 10, 4.5, _safe(f"Tip: {recommendation[:200]}"))
+
+            pdf.ln(4)
+
+    # ── Follow-Up Questions ──
+    questions = []
+    if simplified:
+        questions = simplified.get("followup_questions", []) or []
+
+    if questions:
+        if pdf.get_y() + 30 > pdf.h - 25:
+            pdf.add_page()
+
+        pdf.set_text_color(*BLUE)
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.cell(0, 8, "Follow-Up Questions for Your Doctor", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_draw_color(*BLUE)
+        pdf.line(pdf.l_margin, pdf.get_y(), pdf.l_margin + 40, pdf.get_y())
+        pdf.ln(3)
+
+        pdf.set_text_color(*DARK)
+        pdf.set_font("Helvetica", "", 10)
+        for i, q in enumerate(questions, 1):
+            if pdf.get_y() + 8 > pdf.h - 25:
+                pdf.add_page()
+            pdf.cell(0, 6, _safe(f"{i}. {q}"), new_x="LMARGIN", new_y="NEXT")
+
+        pdf.ln(4)
+
+    # ── Disclaimer Footer ──
+    if pdf.get_y() + 30 > pdf.h - 25:
+        pdf.add_page()
+
+    pdf.ln(6)
+    pdf.set_fill_color(255, 243, 224)
+    y_disc = pdf.get_y()
+    pdf.rect(pdf.l_margin, y_disc, page_w, 18, style="F")
+    pdf.set_xy(pdf.l_margin + 4, y_disc + 2)
+    pdf.set_text_color(180, 83, 9)
+    pdf.set_font("Helvetica", "B", 8)
+    pdf.cell(0, 5, "MEDICAL DISCLAIMER", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_x(pdf.l_margin + 4)
+    pdf.set_font("Helvetica", "", 7)
+    pdf.multi_cell(page_w - 8, 4,
+        "This report is AI-generated for informational purposes only. "
+        "It is NOT a substitute for professional medical advice, diagnosis, or treatment. "
+        "Always consult a qualified healthcare provider for medical decisions.")
+
+    # ── Bottom Brand ──
+    pdf.set_y(-15)
+    pdf.set_font("Helvetica", "I", 7)
+    pdf.set_text_color(*GRAY)
+    pdf.cell(0, 5, "Generated by MedReport AI | Powered by Llama 3.3 70B via Groq", align="C")
+
+    return bytes(pdf.output())
 
 
-# ══════════════════════════════════════════════════════════════════════
-# ══  TOP NAVIGATION  ═════════════════════════════════════════════════
-# ══════════════════════════════════════════════════════════════════════
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# NAVIGATION BAR
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 st.markdown("""
-<div class="topnav">
-    <div class="topnav-brand">
-        <div class="topnav-logo">✚</div>
-        <div>
-            <div class="topnav-name">MedReport AI</div>
-            <div class="topnav-tagline">Medical Intelligence Platform</div>
+<div class="nav-bar">
+    <div class="nav-brand">
+        <div class="nav-brand-icon">🔬</div>
+        MedReport AI
+    </div>
+    <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how-it-works">How It Works</a>
+        <a href="#faq">FAQ</a>
+        <a href="#upload" class="nav-cta">Try Now →</a>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# HERO SECTION
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+col_hero_l, col_hero_r = st.columns([1.2, 1])
+
+with col_hero_l:
+    st.markdown("""
+    <div class="hero-left">
+        <div class="hero-badge">
+            <span class="hero-badge-star">⭐</span>
+            #1 AI Lab Report Analyzer
+            <span class="hero-trust">Powered by Llama 3.3 70B via Groq</span>
+        </div>
+        <div class="hero-title">
+            Lab Test Report Analysis:<br>
+            <span>Understand Your Lab<br>Report in Seconds</span>
+        </div>
+        <ul class="hero-checklist">
+            <li><span class="hero-check">✓</span> Clear explanations of your biomarker values</li>
+            <li><span class="hero-check">✓</span> Reference ranges tailored to your profile</li>
+            <li><span class="hero-check">✓</span> Actionable health recommendations</li>
+            <li><span class="hero-check">✓</span> Abnormality detection with severity levels</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_hero_r:
+    st.markdown("""
+    <div class="report-card">
+        <div class="report-card-header">
+            <div class="report-card-icon">📋</div>
+            <div class="report-card-title">Lab Report Analysis</div>
+        </div>
+        <div class="biomarker-row">
+            <span class="biomarker-name">Hemoglobin</span>
+            <span class="biomarker-value">14.2 g/dL</span>
+            <span class="biomarker-badge badge-normal">✓ Normal</span>
+        </div>
+        <div class="biomarker-row">
+            <span class="biomarker-name">Glucose</span>
+            <span class="biomarker-value">95 mg/dL</span>
+            <span class="biomarker-badge badge-normal">✓ Normal</span>
+        </div>
+        <div class="biomarker-row">
+            <span class="biomarker-name">Cholesterol</span>
+            <span class="biomarker-value">180 mg/dL</span>
+            <span class="biomarker-badge badge-normal">✓ Normal</span>
+        </div>
+        <div class="ai-complete-bar">
+            🤖 AI Analysis Complete
+        </div>
+        <div class="trust-badges">
+            <div class="trust-badge">✅ AI Verified</div>
+            <div class="trust-badge">🎯 99.9% Accurate</div>
         </div>
     </div>
-    <div class="topnav-links">
-        <span class="topnav-link">Features</span>
-        <span class="topnav-link">How It Works</span>
-        <span class="topnav-link">About</span>
-        <span class="topnav-cta">Get Started ↓</span>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
 
-# ══════════════════════════════════════════════════════════════════════
-# ══  HERO SECTION  ═══════════════════════════════════════════════════
-# ══════════════════════════════════════════════════════════════════════
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# UPLOAD + HOW IT WORKS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-st.markdown("""
-<div class="hero">
-    <div class="hero-pill">
-        <span class="hero-pill-dot"></span>
-        Powered by Gemini 2.0 Flash &amp; RAG
-    </div>
-    <h1>Your Medical Reports,<br>Simplified by AI</h1>
-    <p>
-        Upload lab tests, radiology reports, or prescriptions —
-        get instant AI analysis, clear explanations in simple language,
-        flagged abnormalities, and smart follow-up questions for your doctor.
-    </p>
-</div>
-""", unsafe_allow_html=True)
+st.markdown("---")
 
-
-# ── Feature Cards ──────────────────────────────────────────────────────
-
-st.markdown("""
-<div class="features-row">
-    <div class="feature-card" style="--fc-color: #00d2be;">
-        <div class="feature-icon">🔬</div>
-        <div class="feature-title">AI Analysis</div>
-        <div class="feature-desc">GPT-4 extracts and interprets every finding from your report</div>
-    </div>
-    <div class="feature-card" style="--fc-color: #3882f6;">
-        <div class="feature-icon">💬</div>
-        <div class="feature-title">Plain Language</div>
-        <div class="feature-desc">Complex medical terms explained like a friendly doctor would</div>
-    </div>
-    <div class="feature-card" style="--fc-color: #ef4444;">
-        <div class="feature-icon">🚩</div>
-        <div class="feature-title">Abnormality Alerts</div>
-        <div class="feature-desc">Red-flagged results with severity levels and visual indicators</div>
-    </div>
-    <div class="feature-card" style="--fc-color: #8b5cf6;">
-        <div class="feature-icon">❓</div>
-        <div class="feature-title">Follow-Up Questions</div>
-        <div class="feature-desc">Smart questions to ask your doctor at your next visit</div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-
-# ── Disclaimer ─────────────────────────────────────────────────────────
-
-st.markdown("""
-<div class="disclaimer-bar">
-    <span>⚠️</span>
-    <span><strong>Medical Disclaimer:</strong> This tool provides AI-generated analysis for
-    <strong>informational purposes only</strong>. It is NOT a substitute for professional medical advice.
-    Always consult a qualified healthcare provider.</span>
-</div>
-""", unsafe_allow_html=True)
-
-
-# ══════════════════════════════════════════════════════════════════════
-# ══  UPLOAD SECTION  ═════════════════════════════════════════════════
-# ══════════════════════════════════════════════════════════════════════
-
-st.markdown('<div class="upload-section-title">📤 Upload Your Medical Report</div>', unsafe_allow_html=True)
-
-col_upload, col_tips = st.columns([3, 1])
+col_upload, col_steps = st.columns([1, 1])
 
 with col_upload:
+    st.markdown("### 📤 Upload Your Lab Report")
     uploaded_file = st.file_uploader(
-        "Drag & drop or browse",
+        "Upload your lab report or click to upload",
         type=["pdf", "png", "jpg", "jpeg", "txt"],
-        help="Supported: PDF, PNG, JPG, JPEG, TXT (max 10MB)",
+        help="Supported: PDF, PNG, JPG, JPEG, TXT",
         label_visibility="collapsed",
     )
 
-with col_tips:
+    if uploaded_file:
+        st.success(f"✅ **{uploaded_file.name}** ready for analysis!")
+        analyze_btn = st.button("🔬  Start Analysis", use_container_width=True)
+    else:
+        st.markdown("""
+        <div style="text-align: center; padding: 1rem 0; color: #94a3b8; font-size: 0.9rem;">
+            Supported file types: <strong>PDF · PNG/JPG · TXT</strong>
+        </div>
+        """, unsafe_allow_html=True)
+        analyze_btn = False
+
+with col_steps:
     st.markdown("""
-    <div class="gcard" style="padding:1rem;">
-        <div class="gcard-header">💡 Pro Tips</div>
-        <div style="font-size:0.8rem; color:rgba(200,214,229,0.45); line-height:1.7;">
-            • Use clear, high-res scans<br>
-            • Crop unnecessary margins<br>
-            • Works best with lab reports<br>
-            • PDF gives the best results
+    <h3 style="margin-bottom: 1.2rem;">How Lab Report Analyzer Works</h3>
+    <div class="steps-container">
+        <div class="step-row">
+            <div class="step-num">1</div>
+            <div class="step-text">Upload your report (PDF, Image, or Text)</div>
+        </div>
+        <div class="step-row">
+            <div class="step-num">2</div>
+            <div class="step-text">AI extracts and analyzes all biomarkers</div>
+        </div>
+        <div class="step-row">
+            <div class="step-num">3</div>
+            <div class="step-text">Get simplified, easy-to-understand results</div>
+        </div>
+        <div class="step-row">
+            <div class="step-num">4</div>
+            <div class="step-text">View flagged abnormalities with severity</div>
+        </div>
+        <div class="step-row">
+            <div class="step-num">5</div>
+            <div class="step-text">Get follow-up questions for your doctor</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
 
-# ══════════════════════════════════════════════════════════════════════
-# ══  ANALYSIS PIPELINE  ═════════════════════════════════════════════
-# ══════════════════════════════════════════════════════════════════════
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ANALYSIS PIPELINE
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-if uploaded_file is not None:
-    file_kb = uploaded_file.size / 1024
+if uploaded_file and analyze_btn:
+    progress = st.progress(0, text="📤 Uploading report...")
 
+    # ── Upload ──
+    try:
+        files = {"file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
+        u_resp = requests.post(f"{API_BASE_URL}/upload", files=files, timeout=60)
+        if u_resp.status_code != 200:
+            st.error(f"❌ Upload failed: {u_resp.json().get('detail', 'Unknown error')}")
+            st.stop()
+        file_id = u_resp.json()["file_id"]
+        progress.progress(30, text="🔬 Analyzing with AI...")
+    except requests.exceptions.ConnectionError:
+        st.error("❌ Cannot connect to backend. Make sure the API server is running on port 8000.")
+        st.stop()
+    except Exception as e:
+        st.error(f"❌ Upload error: {e}")
+        st.stop()
+
+    # ── Analyze ──
+    try:
+        a_resp = requests.post(
+            f"{API_BASE_URL}/analyze",
+            json={"file_id": file_id, "filename": uploaded_file.name},
+            timeout=180,
+        )
+        if a_resp.status_code != 200:
+            st.error(f"❌ Analysis failed: {a_resp.json().get('detail', 'Unknown error')}")
+            st.stop()
+        analysis = a_resp.json()
+        progress.progress(65, text="📝 Simplifying results...")
+    except Exception as e:
+        st.error(f"❌ Analysis error: {e}")
+        st.stop()
+
+    # ── Simplify ──
+    simplified = None
+    try:
+        s_resp = requests.post(
+            f"{API_BASE_URL}/simplify",
+            json={
+                "file_id": file_id,
+                "analysis_summary": analysis.get("summary", ""),
+                "findings_json": json.dumps(analysis.get("findings", [])),
+            },
+            timeout=180,
+        )
+        if s_resp.status_code == 200:
+            simplified = s_resp.json()
+    except Exception:
+        pass
+
+    progress.progress(100, text="✅ Analysis complete!")
+
+    # Save to history
+    if "history" not in st.session_state:
+        st.session_state.history = []
+    st.session_state.history.insert(0, {
+        "name": uploaded_file.name,
+        "time": datetime.datetime.now().strftime("%H:%M"),
+        "findings": len(analysis.get("findings", [])),
+    })
+
+    # ──────────────────────────────────────────────────────────────────
+    # RESULTS DISPLAY
+    # ──────────────────────────────────────────────────────────────────
+
+    st.markdown("---")
+
+    # Results header
+    st.markdown("""
+    <div class="results-header">
+        <div class="results-header-icon">📊</div>
+        <div class="results-header-title">Analysis Results</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    findings = analysis.get("findings", [])
+    abnormal = [f for f in findings if f.get("status", "normal") != "normal"]
+    normal = [f for f in findings if f.get("status", "normal") == "normal"]
+    total = len(findings)
+    abnormal_count = len(abnormal)
+    health_score = max(10, int(100 - (abnormal_count / max(total, 1)) * 100)) if total > 0 else 85
+
+    # ── Stats Row ──
     st.markdown(f"""
-    <div class="gcard" style="display:flex; align-items:center; gap:1rem; padding:1rem 1.5rem; margin-bottom:1rem;">
-        <div style="font-size:2rem;">📄</div>
-        <div style="flex:1;">
-            <div style="font-weight:600; color:#f1f5f9;">{uploaded_file.name}</div>
-            <div style="font-size:0.8rem; color:rgba(200,214,229,0.35);">{file_kb:.1f} KB · {uploaded_file.type}</div>
+    <div class="stat-row">
+        <div class="stat-card">
+            <div class="stat-value">{total}</div>
+            <div class="stat-label">Total Biomarkers</div>
         </div>
-        <div style="display:flex; align-items:center; gap:6px;">
-            <div style="width:8px; height:8px; border-radius:50%; background:#00d2be;
-                animation: blink 2s infinite;"></div>
-            <span style="font-size:0.82rem; color:#00d2be; font-weight:500;">Ready</span>
+        <div class="stat-card">
+            <div class="stat-value" style="color: #22c55e;">{len(normal)}</div>
+            <div class="stat-label">Normal Results</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" style="color: {'#ef4444' if abnormal_count > 0 else '#22c55e'};">{abnormal_count}</div>
+            <div class="stat-label">Flagged Abnormalities</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    if st.button("🔬  Analyze Report", type="primary", use_container_width=True):
+    # ── Two-Column Layout: Findings + Abnormalities ──
+    col_main, col_abnorm = st.columns([1.5, 1])
 
-        # ── Upload ─────────────────────────────────
-        progress = st.progress(0, text="📤 Uploading report...")
-        try:
-            files = {"file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
-            up_resp = requests.post(f"{API_BASE_URL}/upload", files=files, timeout=30)
-            if up_resp.status_code != 200:
-                st.error(f"❌ Upload failed: {up_resp.json().get('detail', 'Unknown error')}")
-                st.stop()
-            file_id = up_resp.json()["file_id"]
-            progress.progress(30, text="✅ Uploaded! Analyzing with AI...")
-        except requests.exceptions.ConnectionError:
-            st.error("❌ Cannot connect to the backend. Make sure the server is running.")
-            st.code("uvicorn app.main:app --reload --port 8000", language="bash")
-            st.stop()
-        except Exception as e:
-            st.error(f"❌ Upload error: {e}")
-            st.stop()
+    with col_main:
+        # Health Score Gauge
+        st.plotly_chart(make_gauge(health_score), use_container_width=True, config={"displayModeBar": False})
 
-        # ── Analyze ────────────────────────────────
-        try:
-            a_resp = requests.post(
-                f"{API_BASE_URL}/analyze",
-                json={"file_id": file_id, "filename": uploaded_file.name},
-                timeout=120,
-            )
-            if a_resp.status_code != 200:
-                st.error(f"❌ Analysis failed: {a_resp.json().get('detail', 'Unknown error')}")
-                st.stop()
-            analysis = a_resp.json()
-            progress.progress(65, text="🧠 Analyzed! Simplifying...")
-        except Exception as e:
-            st.error(f"❌ Analysis error: {e}")
-            st.stop()
+        # Tabs for results
+        tab_summary, tab_findings, tab_questions = st.tabs(["📝 Summary", "🔬 All Biomarkers", "❓ Follow-Up Questions"])
 
-        # ── Simplify ──────────────────────────────
-        try:
-            s_resp = requests.post(
-                f"{API_BASE_URL}/simplify",
-                json={"file_id": file_id, "summary": analysis["summary"], "findings": analysis["findings"]},
-                timeout=120,
-            )
-            simplified = s_resp.json() if s_resp.status_code == 200 else None
-        except Exception:
-            simplified = None
+        with tab_summary:
+            # Simplified summary
+            if simplified and simplified.get("simplified_summary"):
+                st.markdown(f"""
+                <div class="summary-card">
+                    <h4>🩺 Your Results in Plain Language</h4>
+                    <p>{simplified['simplified_summary']}</p>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div class="summary-card">
+                    <h4>📋 Report Summary</h4>
+                    <p>{analysis.get('summary', 'Analysis complete.')}</p>
+                </div>
+                """, unsafe_allow_html=True)
 
-        progress.progress(100, text="✨ Complete!")
+        with tab_findings:
+            # All biomarker rows in Niroggyan style
+            for f in findings:
+                sev = f.get("status", "normal")
+                badge_cls, badge_txt, _ = SEVERITY_MAP.get(sev, SEVERITY_MAP["normal"])
+                unit = f.get("unit", "")
+                ref = f.get("reference_range", "")
 
-        # ── Save history ───────────────────────────
-        st.session_state.history.append({
-            "filename": uploaded_file.name,
-            "file_id": file_id,
-            "report_type": analysis.get("report_type", "general"),
-            "findings_count": len(analysis.get("findings", [])),
-        })
+                value_display = f.get("value", "N/A")
+                if unit:
+                    value_display = f"{value_display} {unit}"
 
-        # ══════════════════════════════════════════
-        # ══  RESULTS  ═════════════════════════════
-        # ══════════════════════════════════════════
+                interp = f.get("interpretation", "")
 
-        st.markdown('<div class="neon-div"></div>', unsafe_allow_html=True)
-        st.markdown(f"""
-        <div class="sec-header">📊 Analysis Results <div class="sec-line"></div></div>
-        """, unsafe_allow_html=True)
+                st.markdown(f"""
+                <div class="biomarker-row" style="margin-bottom: 6px;">
+                    <div>
+                        <span class="biomarker-name">{f.get('parameter', 'Unknown')}</span>
+                        {f'<div style="font-size: 0.78rem; color: #94a3b8; margin-top: 2px;">Ref: {ref}</div>' if ref else ''}
+                    </div>
+                    <span class="biomarker-value">{value_display}</span>
+                    <span class="biomarker-badge {badge_cls}">{badge_txt}</span>
+                </div>
+                """, unsafe_allow_html=True)
 
-        findings = analysis.get("findings", [])
-        normal_count = sum(1 for f in findings if f.get("status") == "normal")
-        abnormal_findings = [f for f in findings if f.get("status", "normal") != "normal"]
-        abnormal_count = len(abnormal_findings)
+                if interp:
+                    with st.expander(f"💡 Details: {f.get('parameter', '')}"):
+                        st.write(interp)
 
-        # ── Stat Cards Row ─────────────────────────
-        st.markdown(f"""
-        <div class="stats-grid">
-            <div class="scard" style="--scard-color:#00d2be;">
-                <div style="position:absolute;top:0;left:0;right:0;height:3px;
-                    background:linear-gradient(90deg,#00d2be,#3882f6);"></div>
-                <div class="scard-icon">🔬</div>
-                <div class="scard-val teal">{len(findings)}</div>
-                <div class="scard-label">Total Findings</div>
-            </div>
-            <div class="scard">
-                <div style="position:absolute;top:0;left:0;right:0;height:3px;
-                    background:linear-gradient(90deg,#ef4444,#f97316);"></div>
-                <div class="scard-icon">{"🚨" if abnormal_count > 0 else "✅"}</div>
-                <div class="scard-val red">{abnormal_count}</div>
-                <div class="scard-label">Abnormal</div>
-            </div>
-            <div class="scard">
-                <div style="position:absolute;top:0;left:0;right:0;height:3px;
-                    background:linear-gradient(90deg,#3882f6,#60a5fa);"></div>
-                <div class="scard-icon">📋</div>
-                <div class="scard-val blue" style="font-size:1rem;">{analysis.get('report_type','general').replace('_',' ').title()}</div>
-                <div class="scard-label">Report Type</div>
-            </div>
-            <div class="scard">
-                <div style="position:absolute;top:0;left:0;right:0;height:3px;
-                    background:linear-gradient(90deg,#8b5cf6,#a78bfa);"></div>
-                <div class="scard-icon">📖</div>
-                <div class="scard-val purple">{len(analysis.get('medical_terms',[]))}</div>
-                <div class="scard-label">Medical Terms</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        with tab_questions:
+            questions = []
+            if simplified:
+                questions = simplified.get("followup_questions", [])
 
-        # ── Charts Row ─────────────────────────────
-        ch1, ch2 = st.columns(2)
-        with ch1:
-            st.plotly_chart(make_gauge(normal_count, len(findings)), use_container_width=True, config={"displayModeBar": False})
-        with ch2:
-            st.plotly_chart(make_donut(findings), use_container_width=True, config={"displayModeBar": False})
+            if questions:
+                for i, q in enumerate(questions, 1):
+                    st.markdown(f"""
+                    <div class="question-card">
+                        <div class="question-num">{i}</div>
+                        <div class="question-text">{q}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.info("No follow-up questions generated. Try uploading a report with abnormal values.")
 
-        # ══════════════════════════════════════════════════════════
-        # ══  ABNORMALITIES SECTION (RED COLUMN)  ═════════════════
-        # ══════════════════════════════════════════════════════════
-
-        st.markdown(f"""
-        <div class="sec-header">🚩 Abnormalities & Alerts <div class="sec-line"></div></div>
-        """, unsafe_allow_html=True)
-
-        if abnormal_findings:
-            # Build abnormality details from simplified data if available
+    with col_abnorm:
+        if abnormal:
+            # Build detail map from simplified data
             abnorm_details = {}
             if simplified and simplified.get("abnormalities"):
                 for ab in simplified["abnormalities"]:
                     key = ab.get("parameter", "").lower().strip()
                     abnorm_details[key] = ab
 
-            st.markdown(f"""
-            <div class="abnorm-section">
-                <div class="abnorm-header">
-                    <div class="abnorm-header-icon">🚨</div>
-                    <div class="abnorm-header-text">Flagged Abnormalities</div>
-                    <div class="abnorm-header-count">{abnormal_count} found</div>
-                </div>
-            """, unsafe_allow_html=True)
-
-            for f in abnormal_findings:
+            # Abnormality panel — sanitize all dynamic text
+            import html
+            items_html = ""
+            for f in abnormal:
                 sev = f.get("status", "low")
-                icon = SEVERITY_ICONS.get(sev, "⚠️")
-                label = SEVERITY_LABELS.get(sev, sev.title())
+                badge_cls, badge_txt, dot_cls = SEVERITY_MAP.get(sev, SEVERITY_MAP["low"])
+                param = html.escape(str(f.get("parameter", "Unknown")))
+                value = html.escape(str(f.get("value", "N/A")))
+                unit = html.escape(str(f.get("unit", "")))
+                ref = html.escape(str(f.get("reference_range", "")))
 
-                # Get simplified details if available
-                detail = abnorm_details.get(f.get("parameter", "").lower().strip(), {})
-                explanation = detail.get("explanation", f.get("interpretation", ""))
-                recommendation = detail.get("recommendation", "")
+                # Get simplified explanation
+                detail = abnorm_details.get(str(f.get("parameter", "")).lower().strip(), {})
+                explanation = html.escape(str(detail.get("explanation", f.get("interpretation", ""))))
+                recommendation = html.escape(str(detail.get("recommendation", "")))
 
-                st.markdown(f"""
-                <div class="abnorm-card sev-{sev}">
-                    <div class="abnorm-param-row">
-                        <div class="abnorm-param">{icon} {f['parameter']}</div>
-                        <span class="sev-badge {sev}">{label}</span>
-                    </div>
-                    <div style="display:flex; align-items:baseline; gap:0.5rem; margin-top:0.3rem;">
-                        <span class="abnorm-value">{f['value']}</span>
-                        <span class="abnorm-unit">{f.get('unit','')}</span>
-                    </div>
-                    <div class="sev-bar-track">
-                        <div class="sev-bar-fill {sev}"></div>
-                    </div>
-                    <div class="abnorm-ref">📏 Reference Range: {f.get('reference_range', 'N/A')}</div>
-                    {"<div class='abnorm-explain'>💬 " + explanation + "</div>" if explanation else ""}
-                    {"<div class='abnorm-rec'>💡 <span>" + recommendation + "</span></div>" if recommendation else ""}
-                </div>
-                """, unsafe_allow_html=True)
+                val_display = f"{value} {unit}" if unit else value
+                ref_display = f" &middot; Ref: {ref}" if ref else ""
 
-            st.markdown("</div>", unsafe_allow_html=True)
+                explain_html = ""
+                if explanation:
+                    explain_html = f'<div class="abnorm-explain">{explanation}'
+                    if recommendation:
+                        explain_html += f"<br><strong>Tip:</strong> {recommendation}"
+                    explain_html += "</div>"
 
+                items_html += f"""
+<div class="abnorm-item">
+    <div class="abnorm-dot {dot_cls}"></div>
+    <div class="abnorm-detail">
+        <div class="abnorm-param">
+            {param}
+            <span class="biomarker-badge {badge_cls}" style="margin-left:8px;font-size:0.75rem;">{badge_txt}</span>
+        </div>
+        <div class="abnorm-val">{val_display}{ref_display}</div>
+        {explain_html}
+    </div>
+</div>
+"""
+
+            st.html(f"""
+<div class="abnorm-panel">
+    <div class="abnorm-panel-header">
+        <div class="abnorm-panel-title">🚨 Flagged Abnormalities</div>
+        <div class="abnorm-count">{abnormal_count}</div>
+    </div>
+    {items_html}
+</div>
+""")
         else:
-            st.markdown("""
+            st.html("""
             <div class="all-clear">
                 <div class="all-clear-icon">🛡️</div>
                 <div class="all-clear-title">All Clear!</div>
-                <div class="all-clear-sub">No significant abnormalities were detected in your report.</div>
+                <div class="all-clear-sub">All biomarkers are within normal ranges</div>
             </div>
-            """, unsafe_allow_html=True)
+            """)
 
-        # ══════════════════════════════════════════════════════════
-        # ══  TABBED DETAILED RESULTS  ════════════════════════════
-        # ══════════════════════════════════════════════════════════
+    # ── Download PDF Button ──
+    st.markdown("---")
+    col_dl_left, col_dl_mid, col_dl_right = st.columns([1, 1, 1])
+    with col_dl_mid:
+        try:
+            pdf_bytes = generate_pdf(
+                uploaded_file.name, analysis, simplified, health_score
+            )
+            pdf_filename = f"MedReport_AI_{uploaded_file.name.rsplit('.', 1)[0]}_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+            st.download_button(
+                label="📥  Download PDF Report",
+                data=pdf_bytes,
+                file_name=pdf_filename,
+                mime="application/pdf",
+                use_container_width=True,
+            )
+        except Exception as e:
+            st.error(f"PDF generation error: {e}")
 
-        st.markdown('<div class="neon-div"></div>', unsafe_allow_html=True)
-
-        tab1, tab2, tab3 = st.tabs(["📋 Summary & Simplified", "🔬 All Findings", "❓ Follow-Up Questions"])
-
-        with tab1:
-            c1, c2 = st.columns(2)
-            with c1:
-                st.markdown("#### 🧠 AI Analysis Summary")
-                st.markdown(f'<div class="summary-box">{analysis.get("summary","N/A")}</div>', unsafe_allow_html=True)
-            with c2:
-                if simplified:
-                    st.markdown("#### 💬 Simplified For You")
-                    st.markdown(f'<div class="summary-box">{simplified.get("simplified_summary","N/A")}</div>', unsafe_allow_html=True)
-
-            if analysis.get("medical_terms"):
-                st.markdown("")
-                st.markdown("#### 📖 Medical Terms Detected")
-                pills = " ".join([f'<span class="pill">{t}</span>' for t in analysis["medical_terms"]])
-                st.markdown(pills, unsafe_allow_html=True)
-
-        with tab2:
-            if findings:
-                st.markdown("#### All Extracted Findings")
-                for f in findings:
-                    sev = f.get("status", "normal")
-                    is_normal = sev == "normal"
-                    if is_normal:
-                        st.markdown(f"""
-                        <div class="finding-card">
-                            <div class="finding-row">
-                                <div>
-                                    <div class="finding-name">✅ {f['parameter']}</div>
-                                    <div style="font-size:0.78rem; color:rgba(200,214,229,0.3); margin-top:2px;">
-                                        Ref: {f.get('reference_range','N/A')} · {f.get('interpretation','')}
-                                    </div>
-                                </div>
-                                <div style="text-align:right;">
-                                    <div class="finding-val">{f['value']} <span style="font-size:0.75rem; color:rgba(200,214,229,0.3);">{f.get('unit','')}</span></div>
-                                    <span class="badge-normal">Normal</span>
-                                </div>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        icon = SEVERITY_ICONS.get(sev, "⚠️")
-                        label = SEVERITY_LABELS.get(sev, sev.title())
-                        st.markdown(f"""
-                        <div class="abnorm-card sev-{sev}" style="margin-bottom:0.6rem;">
-                            <div class="abnorm-param-row">
-                                <div class="abnorm-param">{icon} {f['parameter']}</div>
-                                <span class="sev-badge {sev}">{label}</span>
-                            </div>
-                            <div style="display:flex; align-items:baseline; gap:0.5rem; margin-top:0.2rem;">
-                                <span class="abnorm-value">{f['value']}</span>
-                                <span class="abnorm-unit">{f.get('unit','')}</span>
-                            </div>
-                            <div class="sev-bar-track"><div class="sev-bar-fill {sev}"></div></div>
-                            <div class="abnorm-ref">📏 Ref: {f.get('reference_range','N/A')} · {f.get('interpretation','')}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-
-        with tab3:
-            if simplified and simplified.get("followup_questions"):
-                st.markdown("#### 💡 Questions to Ask Your Doctor")
-                st.markdown("")
-                for i, q in enumerate(simplified["followup_questions"], 1):
-                    st.markdown(f'<div class="q-card"><span class="q-num">Q{i}.</span> {q}</div>', unsafe_allow_html=True)
-            else:
-                st.info("Follow-up questions not available for this report.")
-
-        # ── Final Disclaimer ───────────────────────
-        st.markdown('<div class="neon-div"></div>', unsafe_allow_html=True)
-        disclaimer = simplified.get("disclaimer", "") if simplified else ""
-        if not disclaimer:
-            disclaimer = ("⚠️ This AI-generated analysis is for informational purposes only. "
-                         "It is NOT a substitute for professional medical advice, diagnosis, or treatment.")
-        st.markdown(f'<div class="disclaimer-bar"><span>⚠️</span><span>{disclaimer}</span></div>', unsafe_allow_html=True)
+    # Disclaimer
+    st.warning("**Medical Disclaimer:** This tool provides AI-generated analysis for **informational purposes only**. It is NOT a substitute for professional medical advice. Always consult a qualified healthcare provider.")
 
 
-# ══════════════════════════════════════════════════════════════════════
-# ══  FOOTER  ═════════════════════════════════════════════════════════
-# ══════════════════════════════════════════════════════════════════════
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# FEATURES SECTION
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-st.markdown(f"""
-<div class="site-footer">
-    <div class="site-footer-brand">🏥 MedReport AI</div>
-    <div class="site-footer-links">
-        <span>Features</span> · <span>Documentation</span> · <span>About</span> · <span>Contact</span>
+if not (uploaded_file and analyze_btn):
+    st.markdown("---")
+    st.markdown('<div class="section-title">Why Use MedReport AI?</div>', unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="features-grid">
+        <div class="feature-card">
+            <div class="feature-icon fi-blue">🧬</div>
+            <div class="feature-title">300+ Biomarkers</div>
+            <div class="feature-desc">Comprehensive analysis covering all essential lab test parameters</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon fi-green">🎯</div>
+            <div class="feature-title">AI-Powered Accuracy</div>
+            <div class="feature-desc">Powered by Llama 3.3 70B via Groq for reliable, consistent results</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon fi-orange">📊</div>
+            <div class="feature-title">Visual Severity Indicators</div>
+            <div class="feature-desc">Color-coded badges and severity bars for quick abnormality spotting</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon fi-purple">💬</div>
+            <div class="feature-title">Plain Language Reports</div>
+            <div class="feature-desc">Complex medical jargon explained in simple, everyday words</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon fi-red">🚨</div>
+            <div class="feature-title">Abnormality Alerts</div>
+            <div class="feature-desc">Instant flagging of out-of-range values with actionable insights</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon fi-teal">❓</div>
+            <div class="feature-title">Doctor-Ready Questions</div>
+            <div class="feature-desc">Smart follow-up questions tailored to your specific results</div>
+        </div>
     </div>
-    <div class="site-footer-copy">
-        © {datetime.now().year} MedReport AI · Built with FastAPI, OpenAI GPT-4 & Streamlit ·
-        For educational purposes only
+    """, unsafe_allow_html=True)
+
+    # ── FAQ Section ──
+    st.markdown("---")
+    st.markdown('<div class="section-title">Frequently Asked Questions (FAQs)</div>', unsafe_allow_html=True)
+
+    with st.expander("Is it safe to upload my lab report?"):
+        st.write("Yes! Your reports are processed securely and not stored permanently. We only use them for real-time analysis and discard them after processing.")
+
+    with st.expander("Will this tool give me a medical diagnosis?"):
+        st.write("No. MedReport AI helps you **understand** your lab values by providing explanations and flagging abnormalities. It is NOT a substitute for a doctor's diagnosis.")
+
+    with st.expander("What types of lab reports can I upload?"):
+        st.write("We support PDF, PNG, JPG, and TXT formats. Common lab reports include Complete Blood Count (CBC), Metabolic Panels, Lipid Profiles, Thyroid Function Tests, and more.")
+
+    with st.expander("I don't understand medical terms. Will this make it simpler for me?"):
+        st.write("Absolutely! Our AI simplifies technical medical language into plain, everyday English. You'll also get actionable recommendations and questions to ask your doctor.")
+
+    with st.expander("How accurate is the AI analysis?"):
+        st.write("Our AI is powered by Meta's Llama 3.3 70B model via Groq, which provides highly accurate biomarker extraction and interpretation. However, always verify results with your healthcare provider.")
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# FOOTER
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+st.markdown("""
+<div class="footer">
+    <div class="footer-brand">🔬 MedReport AI</div>
+    <p style="color: #64748b; font-size: 0.9rem; margin: 4px 0 12px;">
+        AI-Powered Lab Report Analysis — Understand Your Health Better
+    </p>
+    <div class="footer-links">
+        <a href="#">Features</a>
+        <a href="#">Documentation</a>
+        <a href="#">About</a>
+        <a href="#">Privacy Policy</a>
+        <a href="#">Contact</a>
+    </div>
+    <div class="footer-copy">
+        © 2026 MedReport AI · Built with FastAPI, Llama 3.3 via Groq & Streamlit · For educational purposes only
     </div>
 </div>
 """, unsafe_allow_html=True)

@@ -6,8 +6,8 @@ pydantic==2.10.5
 pydantic-settings==2.7.1
 python-dotenv==1.0.1
 
-# Google Gemini
-google-generativeai>=0.8.0
+# Groq
+groq>=0.9.0
 
 # Document Parsing
 PyMuPDF==1.25.3
@@ -20,6 +20,7 @@ chromadb==0.6.3
 streamlit==1.41.1
 plotly==6.5.2
 requests>=2.31.0
+fpdf2>=2.8.0
 
 # Testing
 pytest==8.3.4

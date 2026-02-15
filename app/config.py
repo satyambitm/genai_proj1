@@ -15,10 +15,10 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     APP_VERSION: str = "1.0.0"
 
-    # Google Gemini
-    GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-2.0-flash"
-    GEMINI_VISION_MODEL: str = "gemini-2.0-flash"
+    # Groq
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_VISION_MODEL: str = "meta-llama/llama-4-scout-17b-16e-instruct"
 
     # File Upload
     MAX_FILE_SIZE_MB: int = 10

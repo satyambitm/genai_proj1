@@ -1,16 +1,17 @@
 """
 Analyzer Service — Core AI engine for medical report analysis.
 
-Uses Google Gemini 2.0 Flash for text reports and image/scanned reports.
+Uses Groq API (Llama 3.3 70B for text, Llama 3.2 90B Vision for images).
 Returns structured findings with severity classification.
 """
 
 import json
 import base64
+import time
 from typing import Optional
 from pathlib import Path
 
-import google.generativeai as genai
+from groq import Groq
 
 from app.config import get_settings
 from app.prompts.medical_prompts import (
@@ -29,9 +30,9 @@ from app.models.schemas import (
 settings = get_settings()
 
 
-def _configure_gemini():
-    """Configure the Gemini API client."""
-    genai.configure(api_key=settings.GEMINI_API_KEY)
+def _get_client() -> Groq:
+    """Get a configured Groq client."""
+    return Groq(api_key=settings.GROQ_API_KEY, timeout=120.0)
 
 
 def _parse_ai_response(response_text: str) -> dict:
@@ -52,9 +53,127 @@ def _parse_ai_response(response_text: str) -> dict:
     return json.loads(text.strip())
 
 
+def _generate_with_retry(
+    system_prompt: str,
+    user_content,
+    model_name: str | None = None,
+    max_retries: int = 3,
+) -> str:
+    """
+    Generate content with automatic retry and model fallback.
+    Handles 429 rate limit errors by waiting and falling back to alternative models.
+    """
+    client = _get_client()
+
+    models_to_try = [
+        model_name or settings.GROQ_MODEL,
+        "llama-3.1-8b-instant",
+        "gemma2-9b-it",
+    ]
+
+    for model in models_to_try:
+        for attempt in range(max_retries):
+            try:
+                # Build messages — user_content is always a string for text
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content},
+                ]
+
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    temperature=0.1,
+                    max_tokens=4096,
+                    response_format={"type": "json_object"},
+                )
+                return response.choices[0].message.content
+
+            except Exception as e:
+                error_str = str(e).lower()
+                if "429" in str(e) or "rate" in error_str or "quota" in error_str or "limit" in error_str:
+                    wait_time = (attempt + 1) * 3  # 3s, 6s, 9s
+                    if attempt < max_retries - 1:
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        break  # try next model
+                else:
+                    raise e
+
+    raise Exception(
+        "All models and retries exhausted. "
+        "Please check your Groq API key at https://console.groq.com/keys"
+    )
+
+
+def _generate_vision_with_retry(
+    system_prompt: str,
+    text_prompt: str,
+    image_data: bytes,
+    mime_type: str,
+    max_retries: int = 3,
+) -> str:
+    """
+    Generate content from image using Groq Vision model with retry.
+    """
+    client = _get_client()
+    b64_image = base64.b64encode(image_data).decode("utf-8")
+
+    models_to_try = [
+        settings.GROQ_VISION_MODEL,
+        "llama-3.2-11b-vision-preview",
+        "llama-3.2-90b-vision-preview",
+    ]
+
+    for model in models_to_try:
+        for attempt in range(max_retries):
+            try:
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": text_prompt},
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:{mime_type};base64,{b64_image}",
+                                },
+                            },
+                        ],
+                    },
+                ]
+
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    temperature=0.1,
+                    max_tokens=4096,
+                )
+                return response.choices[0].message.content
+
+            except Exception as e:
+                error_str = str(e).lower()
+                if "429" in str(e) or "rate" in error_str or "limit" in error_str:
+                    wait_time = (attempt + 1) * 3
+                    if attempt < max_retries - 1:
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        break
+                else:
+                    raise e
+
+    raise Exception(
+        "All vision models and retries exhausted. "
+        "Please check your Groq API key at https://console.groq.com/keys"
+    )
+
+
 def analyze_text_report(report_text: str, file_id: str) -> AnalysisResponse:
     """
-    Analyze a text-based medical report using Google Gemini.
+    Analyze a text-based medical report using Groq.
 
     Args:
         report_text: Extracted text content from the medical report.
@@ -63,27 +182,16 @@ def analyze_text_report(report_text: str, file_id: str) -> AnalysisResponse:
     Returns:
         AnalysisResponse with structured findings.
     """
-    _configure_gemini()
-
-    model = genai.GenerativeModel(
-        model_name=settings.GEMINI_MODEL,
-        system_instruction=TEXT_ANALYSIS_SYSTEM_PROMPT,
-        generation_config=genai.types.GenerationConfig(
-            temperature=0.1,
-            response_mime_type="application/json",
-        ),
-    )
-
     user_prompt = TEXT_ANALYSIS_USER_PROMPT.format(report_text=report_text)
-    response = model.generate_content(user_prompt)
+    response_text = _generate_with_retry(TEXT_ANALYSIS_SYSTEM_PROMPT, user_prompt)
 
-    result = _parse_ai_response(response.text)
+    result = _parse_ai_response(response_text)
     return _build_analysis_response(result, file_id, report_text)
 
 
 def analyze_image_report(image_path: str, file_id: str) -> AnalysisResponse:
     """
-    Analyze an image-based medical report using Google Gemini Vision.
+    Analyze an image-based medical report using Groq Vision.
 
     Args:
         image_path: Path to the image file.
@@ -92,35 +200,21 @@ def analyze_image_report(image_path: str, file_id: str) -> AnalysisResponse:
     Returns:
         AnalysisResponse with structured findings.
     """
-    _configure_gemini()
-
-    model = genai.GenerativeModel(
-        model_name=settings.GEMINI_VISION_MODEL,
-        system_instruction=IMAGE_ANALYSIS_SYSTEM_PROMPT,
-        generation_config=genai.types.GenerationConfig(
-            temperature=0.1,
-            response_mime_type="application/json",
-        ),
-    )
-
-    # Read the image file
     image_path_obj = Path(image_path)
     image_data = image_path_obj.read_bytes()
 
-    # Determine MIME type
     ext = image_path_obj.suffix.lower().lstrip(".")
     mime_map = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg"}
     mime_type = mime_map.get(ext, "image/png")
 
-    # Create image part for Gemini
-    image_part = {
-        "mime_type": mime_type,
-        "data": image_data,
-    }
+    response_text = _generate_vision_with_retry(
+        IMAGE_ANALYSIS_SYSTEM_PROMPT,
+        IMAGE_ANALYSIS_USER_PROMPT,
+        image_data,
+        mime_type,
+    )
 
-    response = model.generate_content([IMAGE_ANALYSIS_USER_PROMPT, image_part])
-
-    result = _parse_ai_response(response.text)
+    result = _parse_ai_response(response_text)
     return _build_analysis_response(result, file_id)
 
 
@@ -168,12 +262,11 @@ def _normalize_severity(raw: str) -> SeverityLevel:
     if raw in mapping:
         return mapping[raw]
 
-    # Fuzzy matching — check if any keyword is contained in the string
+    # Fuzzy matching
     for key, level in mapping.items():
         if key in raw or raw in key:
             return level
 
-    # Default fallback
     return SeverityLevel.LOW
 
 
@@ -182,7 +275,6 @@ def _build_analysis_response(
 ) -> AnalysisResponse:
     """Build a structured AnalysisResponse from the parsed AI output."""
 
-    # Map findings
     findings = []
     for f in result.get("findings", []):
         findings.append(
@@ -196,7 +288,6 @@ def _build_analysis_response(
             )
         )
 
-    # Map report type
     report_type_str = result.get("report_type", "general")
     try:
         report_type = ReportType(report_type_str)
