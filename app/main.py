@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.models.schemas import HealthCheckResponse
-from app.routers import upload
+from app.routers import upload, analyze, simplify
 
 settings = get_settings()
 
@@ -43,6 +43,8 @@ app.add_middleware(
 # ── Register Routers ──────────────────────────────────────────────────
 
 app.include_router(upload.router)
+app.include_router(analyze.router)
+app.include_router(simplify.router)
 
 
 # ── Health Check ───────────────────────────────────────────────────────
