@@ -1,1010 +1,1032 @@
 """
-MedReport AI — Premium Streamlit Frontend Dashboard.
+MedReport AI — Product-Grade Medical Report Analyzer Frontend.
 
-A polished, product-grade medical report analyzer UI with
-medical-themed design, data visualizations, and cool output displays.
+A polished, product-ready website with premium medical UI,
+dedicated abnormality alerts with red severity markers,
+and interactive data visualizations.
 """
 
 import streamlit as st
 import requests
 import json
 import plotly.graph_objects as go
-import plotly.express as px
 from datetime import datetime
 
 # ── Page Config ────────────────────────────────────────────────────────
 
 st.set_page_config(
-    page_title="MedReport AI — Medical Report Analyzer",
+    page_title="MedReport AI | AI-Powered Medical Report Analyzer",
     page_icon="🏥",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ── Premium Medical-Themed CSS ─────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════
+# ══  PREMIUM PRODUCT CSS  ════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-    /* ── Global Reset ────────────────────────── */
+    /* ── Global ──────────────────────────────── */
+    * { box-sizing: border-box; }
     .stApp {
-        font-family: 'Inter', sans-serif;
-        background: linear-gradient(160deg, #0a0e27 0%, #0d1b3e 25%, #0f2847 50%, #0a1628 75%, #060b1a 100%);
-        color: #e0e6ed;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: #060918;
+        color: #c8d6e5;
     }
+    #MainMenu, footer, header, .stDeployButton { display: none !important; }
 
-    /* Hide default streamlit elements */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    .stDeployButton {display: none;}
-
-    /* ── Medical Background Pattern ─────────── */
+    /* ── Animated background ─────────────────── */
     .stApp::before {
         content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-image:
-            radial-gradient(circle at 15% 25%, rgba(0, 210, 190, 0.04) 0%, transparent 50%),
-            radial-gradient(circle at 85% 75%, rgba(56, 130, 246, 0.04) 0%, transparent 50%),
-            radial-gradient(circle at 50% 10%, rgba(139, 92, 246, 0.03) 0%, transparent 40%),
-            url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M28 2h4v16h-4zM28 42h4v16h-4zM2 28h16v4H2zM42 28h16v4H42z' fill='rgba(0,210,190,0.015)' fill-rule='evenodd'/%3E%3C/svg%3E");
-        pointer-events: none;
-        z-index: 0;
+        position: fixed; top: 0; left: 0;
+        width: 100%; height: 100%;
+        background:
+            radial-gradient(ellipse at 10% 20%, rgba(0,210,190,0.06) 0%, transparent 50%),
+            radial-gradient(ellipse at 90% 80%, rgba(56,130,246,0.05) 0%, transparent 50%),
+            radial-gradient(ellipse at 50% 0%, rgba(139,92,246,0.04) 0%, transparent 40%),
+            url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M36 4h8v24h-8zM36 52h8v24h-8zM4 36h24v8H4zM52 36h24v8H52z' fill='rgba(0,210,190,0.012)' fill-rule='evenodd'/%3E%3C/svg%3E");
+        pointer-events: none; z-index: 0;
+    }
+
+    /* ── Top Navigation Bar ──────────────────── */
+    .topnav {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 1rem 0; margin-bottom: 0.5rem;
+        border-bottom: 1px solid rgba(0,210,190,0.08);
+    }
+    .topnav-brand {
+        display: flex; align-items: center; gap: 0.8rem;
+    }
+    .topnav-logo {
+        width: 42px; height: 42px; border-radius: 12px;
+        background: linear-gradient(135deg, #00d2be, #3882f6);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.3rem; color: white; font-weight: 700;
+    }
+    .topnav-name {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.4rem; font-weight: 700;
+        background: linear-gradient(135deg, #00d2be, #3882f6);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .topnav-tagline {
+        font-size: 0.7rem; color: rgba(200,214,229,0.35);
+        letter-spacing: 2px; text-transform: uppercase;
+    }
+    .topnav-links {
+        display: flex; gap: 1.5rem; align-items: center;
+    }
+    .topnav-link {
+        font-size: 0.85rem; color: rgba(200,214,229,0.5);
+        text-decoration: none; transition: color 0.2s;
+        cursor: default;
+    }
+    .topnav-link:hover { color: #00d2be; }
+    .topnav-cta {
+        background: linear-gradient(135deg, #00d2be, #3882f6);
+        color: white !important; padding: 8px 20px;
+        border-radius: 10px; font-weight: 600; font-size: 0.82rem;
+        text-decoration: none; transition: all 0.3s;
+        box-shadow: 0 4px 15px rgba(0,210,190,0.2);
+    }
+    .topnav-cta:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 25px rgba(0,210,190,0.35);
     }
 
     /* ── Hero Section ────────────────────────── */
-    .hero-container {
-        position: relative;
-        background: linear-gradient(135deg, rgba(0, 210, 190, 0.12) 0%, rgba(56, 130, 246, 0.08) 50%, rgba(139, 92, 246, 0.06) 100%);
-        border: 1px solid rgba(0, 210, 190, 0.2);
-        border-radius: 24px;
-        padding: 2.5rem 3rem;
-        margin-bottom: 2rem;
+    .hero {
+        position: relative; text-align: center;
+        padding: 3.5rem 2rem 2.5rem;
+        background: linear-gradient(160deg, rgba(0,210,190,0.08) 0%, rgba(56,130,246,0.04) 50%, rgba(6,9,24,0) 100%);
+        border: 1px solid rgba(0,210,190,0.08);
+        border-radius: 28px; margin-bottom: 2.5rem;
         overflow: hidden;
-        backdrop-filter: blur(20px);
     }
-    .hero-container::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -20%;
-        width: 400px;
-        height: 400px;
-        background: radial-gradient(circle, rgba(0, 210, 190, 0.08) 0%, transparent 70%);
+    .hero::before {
+        content: ''; position: absolute; top: -100px; right: -50px;
+        width: 300px; height: 300px;
+        background: radial-gradient(circle, rgba(0,210,190,0.06) 0%, transparent 70%);
         border-radius: 50%;
     }
-    .hero-container::after {
-        content: '✚';
-        position: absolute;
-        top: 20px;
-        right: 40px;
-        font-size: 120px;
-        opacity: 0.03;
-        color: #00d2be;
+    .hero::after {
+        content: '✚'; position: absolute; bottom: 20px; left: 40px;
+        font-size: 160px; opacity: 0.015; color: #00d2be;
     }
-    .hero-badge {
-        display: inline-block;
-        background: linear-gradient(135deg, #00d2be, #3882f6);
-        color: white;
-        padding: 4px 14px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        margin-bottom: 1rem;
+    .hero-pill {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: rgba(0,210,190,0.1); border: 1px solid rgba(0,210,190,0.2);
+        padding: 6px 16px; border-radius: 30px;
+        font-size: 0.78rem; font-weight: 600; color: #00d2be;
+        letter-spacing: 0.5px; margin-bottom: 1.5rem;
     }
-    .hero-title {
+    .hero-pill-dot {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: #00d2be; animation: blink 2s infinite;
+    }
+    @keyframes blink {
+        0%, 100% { opacity: 1; } 50% { opacity: 0.3; }
+    }
+    .hero h1 {
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 2.8rem;
-        font-weight: 700;
-        background: linear-gradient(135deg, #ffffff 0%, #00d2be 50%, #3882f6 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        margin: 0 0 0.7rem 0;
-        line-height: 1.15;
-        letter-spacing: -1px;
+        font-size: 3.2rem; font-weight: 800; line-height: 1.1;
+        letter-spacing: -1.5px; margin: 0 0 1rem 0;
+        background: linear-gradient(135deg, #ffffff 20%, #00d2be 60%, #3882f6 100%);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
-    .hero-subtitle {
-        font-size: 1.05rem;
-        color: rgba(224, 230, 237, 0.7);
-        max-width: 650px;
-        line-height: 1.6;
+    .hero p {
+        font-size: 1.1rem; color: rgba(200,214,229,0.55);
+        max-width: 600px; margin: 0 auto; line-height: 1.7;
     }
 
-    /* ── Disclaimer ──────────────────────────── */
-    .medical-disclaimer {
-        background: rgba(245, 158, 11, 0.08);
-        border: 1px solid rgba(245, 158, 11, 0.25);
-        border-left: 4px solid #f59e0b;
-        border-radius: 0 12px 12px 0;
-        padding: 0.9rem 1.3rem;
-        margin-bottom: 2rem;
-        font-size: 0.85rem;
-        color: #fbbf24;
-        backdrop-filter: blur(10px);
+    /* ── Feature Cards Row ───────────────────── */
+    .features-row {
+        display: grid; grid-template-columns: repeat(4, 1fr);
+        gap: 1rem; margin-bottom: 2.5rem;
+    }
+    .feature-card {
+        background: rgba(12,18,40,0.6);
+        border: 1px solid rgba(255,255,255,0.04);
+        border-radius: 16px; padding: 1.3rem; text-align: center;
+        transition: all 0.3s ease; backdrop-filter: blur(10px);
+        position: relative; overflow: hidden;
+    }
+    .feature-card::after {
+        content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+        height: 2px; background: linear-gradient(90deg, var(--fc-color, #00d2be), transparent);
+        opacity: 0; transition: opacity 0.3s;
+    }
+    .feature-card:hover { border-color: rgba(0,210,190,0.15); transform: translateY(-3px); }
+    .feature-card:hover::after { opacity: 1; }
+    .feature-icon { font-size: 1.8rem; margin-bottom: 0.6rem; }
+    .feature-title { font-weight: 700; font-size: 0.88rem; color: #f1f5f9; margin-bottom: 0.3rem; }
+    .feature-desc { font-size: 0.78rem; color: rgba(200,214,229,0.4); line-height: 1.5; }
+
+    /* ── Medical Disclaimer ──────────────────── */
+    .disclaimer-bar {
+        display: flex; align-items: center; gap: 0.8rem;
+        background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.15);
+        border-radius: 12px; padding: 0.7rem 1.2rem; margin-bottom: 2rem;
+        font-size: 0.83rem; color: rgba(251,191,36,0.8);
     }
 
-    /* ── Glass Cards ─────────────────────────── */
-    .glass-card {
-        background: rgba(15, 23, 42, 0.6);
-        border: 1px solid rgba(0, 210, 190, 0.12);
-        border-radius: 16px;
-        padding: 1.5rem;
+    /* ── Upload Section ──────────────────────── */
+    .upload-section-title {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.5rem; font-weight: 700; color: #f1f5f9;
         margin-bottom: 1rem;
+    }
+
+    /* ── Glass Card (reusable) ───────────────── */
+    .gcard {
+        background: rgba(12,18,40,0.6);
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 16px; padding: 1.5rem;
         backdrop-filter: blur(20px);
         transition: all 0.3s ease;
     }
-    .glass-card:hover {
-        border-color: rgba(0, 210, 190, 0.3);
-        box-shadow: 0 8px 32px rgba(0, 210, 190, 0.08);
-        transform: translateY(-2px);
+    .gcard:hover {
+        border-color: rgba(0,210,190,0.12);
     }
-    .glass-card-header {
+    .gcard-header {
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 0.8rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-        color: #00d2be;
-        margin-bottom: 0.8rem;
+        font-size: 0.72rem; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 1.8px;
+        color: #00d2be; margin-bottom: 1rem;
     }
 
-    /* ── Stat Cards ──────────────────────────── */
-    .stat-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 1rem;
-        margin-bottom: 2rem;
+    /* ── Stat Cards (circular) ───────────────── */
+    .stats-grid {
+        display: grid; grid-template-columns: repeat(4, 1fr);
+        gap: 1rem; margin-bottom: 1.5rem;
     }
-    .stat-card {
-        background: rgba(15, 23, 42, 0.6);
-        border: 1px solid rgba(56, 130, 246, 0.15);
-        border-radius: 16px;
-        padding: 1.4rem;
-        text-align: center;
-        backdrop-filter: blur(20px);
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
+    .scard {
+        background: rgba(12,18,40,0.7);
+        border: 1px solid rgba(255,255,255,0.04);
+        border-radius: 16px; padding: 1.2rem 0.8rem;
+        text-align: center; transition: all 0.3s;
+        position: relative; overflow: hidden;
     }
-    .stat-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 3px;
-        background: linear-gradient(90deg, #00d2be, #3882f6);
-        opacity: 0;
-        transition: opacity 0.3s ease;
+    .scard::before {
+        content: ''; position: absolute; top: 0; left: 0; right: 0;
+        height: 3px; opacity: 0; transition: opacity 0.3s;
     }
-    .stat-card:hover::before { opacity: 1; }
-    .stat-card:hover {
-        border-color: rgba(56, 130, 246, 0.35);
-        transform: translateY(-3px);
-        box-shadow: 0 12px 40px rgba(56, 130, 246, 0.1);
-    }
-    .stat-icon {
-        font-size: 1.5rem;
-        margin-bottom: 0.4rem;
-    }
-    .stat-value {
+    .scard:hover { transform: translateY(-3px); border-color: rgba(0,210,190,0.15); }
+    .scard:hover::before { opacity: 1; }
+    .scard-icon { font-size: 1.4rem; margin-bottom: 0.3rem; }
+    .scard-val {
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 2rem;
-        font-weight: 700;
-        background: linear-gradient(135deg, #00d2be, #3882f6);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        font-size: 1.8rem; font-weight: 800; line-height: 1.2;
     }
-    .stat-label {
-        font-size: 0.78rem;
-        color: rgba(224, 230, 237, 0.5);
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        margin-top: 0.3rem;
+    .scard-val.teal { color: #00d2be; }
+    .scard-val.red { color: #f87171; }
+    .scard-val.blue { color: #60a5fa; }
+    .scard-val.purple { color: #a78bfa; }
+    .scard-label {
+        font-size: 0.7rem; color: rgba(200,214,229,0.35);
+        text-transform: uppercase; letter-spacing: 1px; margin-top: 0.2rem;
     }
 
-    /* ── Severity Badges ─────────────────────── */
-    .badge {
-        display: inline-block;
-        padding: 4px 14px;
-        border-radius: 20px;
-        font-size: 0.72rem;
-        font-weight: 700;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
+    /* ══════════════════════════════════════════════
+       ══  ABNORMALITY COLUMN (RED SEVERITY)  ══════
+       ══════════════════════════════════════════════ */
+    .abnorm-section {
+        background: rgba(239,68,68,0.04);
+        border: 1px solid rgba(239,68,68,0.12);
+        border-radius: 20px; padding: 1.5rem;
+        margin-bottom: 1.5rem;
     }
-    .badge-normal { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
-    .badge-low { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
-    .badge-medium { background: rgba(249, 115, 22, 0.15); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.3); }
-    .badge-high { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
-    .badge-critical { background: rgba(239, 68, 68, 0.25); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.5); animation: pulse-critical 2s infinite; }
-
-    @keyframes pulse-critical {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
-        50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+    .abnorm-header {
+        display: flex; align-items: center; gap: 0.7rem;
+        margin-bottom: 1.2rem;
+    }
+    .abnorm-header-icon {
+        width: 36px; height: 36px; border-radius: 10px;
+        background: rgba(239,68,68,0.15);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem;
+    }
+    .abnorm-header-text {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.1rem; font-weight: 700; color: #fca5a5;
+    }
+    .abnorm-header-count {
+        margin-left: auto;
+        background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3);
+        color: #f87171; padding: 4px 14px;
+        border-radius: 20px; font-size: 0.78rem; font-weight: 700;
     }
 
-    /* ── Finding Cards ───────────────────────── */
-    .finding-card {
-        background: rgba(15, 23, 42, 0.5);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 14px;
-        padding: 1.2rem 1.4rem;
-        margin-bottom: 0.8rem;
+    /* Individual abnormality card */
+    .abnorm-card {
+        background: rgba(239,68,68,0.03);
+        border: 1px solid rgba(239,68,68,0.1);
+        border-left: 4px solid;
+        border-radius: 0 14px 14px 0;
+        padding: 1.2rem 1.4rem; margin-bottom: 0.8rem;
         transition: all 0.3s ease;
     }
-    .finding-card:hover {
-        background: rgba(15, 23, 42, 0.7);
-        border-color: rgba(0, 210, 190, 0.2);
-    }
-    .finding-card.abnormal {
-        border-left: 3px solid #ef4444;
-    }
-    .finding-param {
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 1rem;
-        font-weight: 600;
-        color: #f1f5f9;
-        margin-bottom: 0.4rem;
-    }
-    .finding-value {
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: #00d2be;
-    }
-    .finding-meta {
-        font-size: 0.82rem;
-        color: rgba(224, 230, 237, 0.45);
-        margin-top: 0.3rem;
-    }
-
-    /* ── Question Cards ──────────────────────── */
-    .question-card {
-        background: rgba(56, 130, 246, 0.06);
-        border: 1px solid rgba(56, 130, 246, 0.15);
-        border-left: 3px solid #3882f6;
-        border-radius: 0 12px 12px 0;
-        padding: 0.9rem 1.2rem;
-        margin-bottom: 0.6rem;
-        font-size: 0.92rem;
-        color: #93c5fd;
-        transition: all 0.3s ease;
-    }
-    .question-card:hover {
-        background: rgba(56, 130, 246, 0.1);
+    .abnorm-card:hover {
+        background: rgba(239,68,68,0.06);
         transform: translateX(4px);
     }
 
-    /* ── Upload Area ─────────────────────────── */
-    .upload-zone {
-        background: rgba(0, 210, 190, 0.04);
-        border: 2px dashed rgba(0, 210, 190, 0.2);
-        border-radius: 20px;
-        padding: 2.5rem 2rem;
-        text-align: center;
-        transition: all 0.3s ease;
-        margin-bottom: 1.5rem;
-    }
-    .upload-zone:hover {
-        border-color: rgba(0, 210, 190, 0.4);
-        background: rgba(0, 210, 190, 0.06);
-    }
-    .upload-icon {
-        font-size: 3rem;
-        margin-bottom: 0.8rem;
-    }
-    .upload-text {
-        color: rgba(224, 230, 237, 0.6);
-        font-size: 0.9rem;
-    }
+    /* Severity-specific left-border colors */
+    .abnorm-card.sev-low { border-left-color: #f59e0b; }
+    .abnorm-card.sev-medium { border-left-color: #f97316; }
+    .abnorm-card.sev-high { border-left-color: #ef4444; }
+    .abnorm-card.sev-critical { border-left-color: #dc2626; }
 
-    /* ── Section Headers ─────────────────────── */
-    .section-header {
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 1.4rem;
-        font-weight: 600;
-        color: #f1f5f9;
-        margin: 1.8rem 0 1rem 0;
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-    }
-    .section-header-line {
-        flex: 1;
-        height: 1px;
-        background: linear-gradient(90deg, rgba(0, 210, 190, 0.3), transparent);
-    }
-
-    /* ── Medical Term Pills ──────────────────── */
-    .term-pill {
-        display: inline-block;
-        background: rgba(139, 92, 246, 0.1);
-        border: 1px solid rgba(139, 92, 246, 0.2);
-        color: #c4b5fd;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        margin: 3px;
-        transition: all 0.2s ease;
-    }
-    .term-pill:hover {
-        background: rgba(139, 92, 246, 0.2);
-        transform: scale(1.05);
-    }
-
-    /* ── Abnormality Alert Card ──────────────── */
-    .alert-card {
-        background: rgba(239, 68, 68, 0.06);
-        border: 1px solid rgba(239, 68, 68, 0.15);
-        border-radius: 14px;
-        padding: 1.2rem;
-        margin-bottom: 0.8rem;
-        transition: all 0.3s ease;
-    }
-    .alert-card:hover {
-        background: rgba(239, 68, 68, 0.1);
-        border-color: rgba(239, 68, 68, 0.3);
-    }
-    .alert-title {
-        font-family: 'Space Grotesk', sans-serif;
-        font-weight: 600;
-        color: #fca5a5;
-        margin-bottom: 0.4rem;
-    }
-    .alert-body {
-        font-size: 0.88rem;
-        color: rgba(224, 230, 237, 0.65);
-        line-height: 1.5;
-    }
-    .alert-rec {
-        font-size: 0.82rem;
-        color: rgba(251, 191, 36, 0.8);
-        font-style: italic;
-        margin-top: 0.4rem;
-    }
-
-    /* ── Summary Card ────────────────────────── */
-    .summary-card {
-        background: linear-gradient(135deg, rgba(0, 210, 190, 0.06), rgba(56, 130, 246, 0.04));
-        border: 1px solid rgba(0, 210, 190, 0.15);
-        border-radius: 16px;
-        padding: 1.5rem;
-        font-size: 1rem;
-        line-height: 1.7;
-        color: rgba(224, 230, 237, 0.85);
-    }
-
-    /* ── Progress Shimmer ────────────────────── */
-    .shimmer {
-        background: linear-gradient(90deg, rgba(0,210,190,0.05) 25%, rgba(0,210,190,0.15) 50%, rgba(0,210,190,0.05) 75%);
-        background-size: 200% 100%;
-        animation: shimmer 2s infinite;
-        border-radius: 12px;
-        height: 20px;
+    .abnorm-param-row {
+        display: flex; align-items: center; justify-content: space-between;
         margin-bottom: 0.5rem;
     }
-    @keyframes shimmer {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
+    .abnorm-param {
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 700; font-size: 1rem; color: #f1f5f9;
     }
 
-    /* ── Sidebar Styling ─────────────────────── */
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #0a0e27 0%, #0d1b3e 100%);
-        border-right: 1px solid rgba(0, 210, 190, 0.1);
+    /* Severity badge */
+    .sev-badge {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 4px 12px; border-radius: 20px;
+        font-size: 0.7rem; font-weight: 800;
+        letter-spacing: 0.5px; text-transform: uppercase;
     }
-    [data-testid="stSidebar"] .stMarkdown {
-        color: #e0e6ed;
+    .sev-badge.low { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+    .sev-badge.medium { background: rgba(249,115,22,0.15); color: #fb923c; border: 1px solid rgba(249,115,22,0.3); }
+    .sev-badge.high { background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid rgba(239,68,68,0.35); }
+    .sev-badge.critical {
+        background: rgba(220,38,38,0.25); color: #fca5a5;
+        border: 1px solid rgba(220,38,38,0.5);
+        animation: pulse-crit 2s infinite;
+    }
+    @keyframes pulse-crit {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.3); }
+        50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
     }
 
-    /* ── Streamlit overrides ─────────────────── */
+    /* Severity bar visualizer */
+    .sev-bar-track {
+        height: 6px; border-radius: 3px;
+        background: rgba(255,255,255,0.05);
+        margin: 0.5rem 0; overflow: hidden;
+    }
+    .sev-bar-fill {
+        height: 100%; border-radius: 3px;
+        transition: width 0.6s ease;
+    }
+    .sev-bar-fill.low { width: 25%; background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+    .sev-bar-fill.medium { width: 50%; background: linear-gradient(90deg, #f97316, #fb923c); }
+    .sev-bar-fill.high { width: 75%; background: linear-gradient(90deg, #ef4444, #f87171); }
+    .sev-bar-fill.critical { width: 100%; background: linear-gradient(90deg, #dc2626, #ef4444); }
+
+    .abnorm-value {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 1.3rem; font-weight: 700; color: #f87171;
+    }
+    .abnorm-unit {
+        font-size: 0.82rem; color: rgba(200,214,229,0.35);
+    }
+    .abnorm-ref {
+        font-size: 0.8rem; color: rgba(200,214,229,0.3);
+        margin-top: 0.4rem;
+    }
+    .abnorm-explain {
+        font-size: 0.88rem; color: rgba(200,214,229,0.6);
+        line-height: 1.6; margin-top: 0.6rem;
+        padding-top: 0.6rem; border-top: 1px solid rgba(255,255,255,0.04);
+    }
+    .abnorm-rec {
+        display: flex; align-items: flex-start; gap: 0.5rem;
+        font-size: 0.82rem; color: rgba(251,191,36,0.7);
+        margin-top: 0.5rem; font-style: italic;
+    }
+
+    /* All-clear card */
+    .all-clear {
+        text-align: center; padding: 2.5rem 1.5rem;
+        background: rgba(16,185,129,0.04);
+        border: 1px solid rgba(16,185,129,0.1);
+        border-radius: 16px;
+    }
+    .all-clear-icon { font-size: 3rem; margin-bottom: 0.5rem; }
+    .all-clear-title { font-size: 1.2rem; font-weight: 700; color: #34d399; }
+    .all-clear-sub { font-size: 0.88rem; color: rgba(200,214,229,0.4); margin-top: 0.3rem; }
+
+    /* ── Finding Cards (normal) ──────────────── */
+    .finding-card {
+        background: rgba(12,18,40,0.5);
+        border: 1px solid rgba(255,255,255,0.04);
+        border-radius: 14px; padding: 1rem 1.2rem;
+        margin-bottom: 0.6rem; transition: all 0.3s;
+    }
+    .finding-card:hover {
+        border-color: rgba(0,210,190,0.15);
+        transform: translateX(4px);
+    }
+    .finding-row {
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .finding-name {
+        font-weight: 600; font-size: 0.92rem; color: #e2e8f0;
+    }
+    .finding-val {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 1.1rem; font-weight: 600; color: #00d2be;
+    }
+    .badge-normal {
+        display: inline-block; padding: 3px 10px;
+        border-radius: 20px; font-size: 0.68rem; font-weight: 700;
+        background: rgba(16,185,129,0.12); color: #34d399;
+        border: 1px solid rgba(16,185,129,0.25);
+        text-transform: uppercase; letter-spacing: 0.3px;
+    }
+
+    /* ── Question Cards ──────────────────────── */
+    .q-card {
+        background: rgba(56,130,246,0.04);
+        border: 1px solid rgba(56,130,246,0.1);
+        border-left: 3px solid #3882f6;
+        border-radius: 0 12px 12px 0;
+        padding: 0.9rem 1.2rem; margin-bottom: 0.5rem;
+        transition: all 0.3s; font-size: 0.92rem; color: #93c5fd;
+    }
+    .q-card:hover { background: rgba(56,130,246,0.08); transform: translateX(4px); }
+    .q-num { color: #3882f6; font-weight: 800; margin-right: 8px; }
+
+    /* ── Summary Card ────────────────────────── */
+    .summary-box {
+        background: linear-gradient(135deg, rgba(0,210,190,0.04), rgba(56,130,246,0.03));
+        border: 1px solid rgba(0,210,190,0.1);
+        border-radius: 16px; padding: 1.5rem;
+        font-size: 0.95rem; line-height: 1.8;
+        color: rgba(200,214,229,0.8);
+    }
+
+    /* ── Term Pills ──────────────────────────── */
+    .pill {
+        display: inline-block;
+        background: rgba(139,92,246,0.08);
+        border: 1px solid rgba(139,92,246,0.15);
+        color: #c4b5fd; padding: 4px 12px;
+        border-radius: 20px; font-size: 0.78rem;
+        margin: 3px; transition: all 0.2s;
+    }
+    .pill:hover { background: rgba(139,92,246,0.15); transform: scale(1.05); }
+
+    /* ── Divider ─────────────────────────────── */
+    .neon-div {
+        height: 1px; margin: 2rem 0;
+        background: linear-gradient(90deg, transparent, rgba(0,210,190,0.2), rgba(56,130,246,0.2), transparent);
+    }
+
+    /* ── Section Header ──────────────────────── */
+    .sec-header {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.3rem; font-weight: 700; color: #f1f5f9;
+        margin: 1.5rem 0 1rem; display: flex;
+        align-items: center; gap: 0.6rem;
+    }
+    .sec-line { flex: 1; height: 1px; background: linear-gradient(90deg, rgba(0,210,190,0.2), transparent); }
+
+    /* ── Footer ──────────────────────────────── */
+    .site-footer {
+        text-align: center; padding: 2.5rem 0 1rem;
+        border-top: 1px solid rgba(255,255,255,0.03);
+        margin-top: 3rem;
+    }
+    .site-footer-brand {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.2rem; font-weight: 700;
+        background: linear-gradient(135deg, #00d2be, #3882f6);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .site-footer-links {
+        display: flex; justify-content: center; gap: 2rem;
+        margin: 1rem 0; font-size: 0.82rem; color: rgba(200,214,229,0.3);
+    }
+    .site-footer-copy {
+        font-size: 0.75rem; color: rgba(200,214,229,0.2);
+    }
+
+    /* ── Streamlit Overrides ─────────────────── */
     .stButton > button {
         background: linear-gradient(135deg, #00d2be 0%, #3882f6 100%) !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 12px !important;
-        padding: 0.7rem 2rem !important;
-        font-weight: 600 !important;
-        font-size: 1rem !important;
-        letter-spacing: 0.5px !important;
-        transition: all 0.3s ease !important;
-        box-shadow: 0 4px 20px rgba(0, 210, 190, 0.25) !important;
+        color: white !important; border: none !important;
+        border-radius: 14px !important; padding: 0.8rem 2.5rem !important;
+        font-weight: 700 !important; font-size: 1rem !important;
+        letter-spacing: 0.3px !important; transition: all 0.3s !important;
+        box-shadow: 0 4px 20px rgba(0,210,190,0.25) !important;
     }
     .stButton > button:hover {
         transform: translateY(-2px) !important;
-        box-shadow: 0 8px 30px rgba(0, 210, 190, 0.35) !important;
+        box-shadow: 0 8px 30px rgba(0,210,190,0.35) !important;
     }
-
     .stFileUploader {
-        background: rgba(0, 210, 190, 0.04) !important;
-        border: 2px dashed rgba(0, 210, 190, 0.2) !important;
+        background: rgba(0,210,190,0.03) !important;
+        border: 2px dashed rgba(0,210,190,0.15) !important;
         border-radius: 16px !important;
     }
-
-    .stExpander {
-        background: rgba(15, 23, 42, 0.5) !important;
-        border: 1px solid rgba(255, 255, 255, 0.06) !important;
-        border-radius: 14px !important;
-    }
-
-    /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background: rgba(15, 23, 42, 0.5);
-        border-radius: 12px;
-        padding: 4px;
+        gap: 4px; background: rgba(12,18,40,0.6);
+        border-radius: 14px; padding: 5px; border: 1px solid rgba(255,255,255,0.04);
     }
     .stTabs [data-baseweb="tab"] {
-        border-radius: 8px;
-        color: rgba(224, 230, 237, 0.6);
-        font-weight: 500;
+        border-radius: 10px; color: rgba(200,214,229,0.5); font-weight: 500;
+        padding: 8px 16px;
     }
     .stTabs [aria-selected="true"] {
-        background: rgba(0, 210, 190, 0.15) !important;
-        color: #00d2be !important;
+        background: rgba(0,210,190,0.12) !important; color: #00d2be !important;
     }
-
-    /* Fix text color in dark mode */
-    .stMarkdown, .stText, p, span, li {
-        color: #e0e6ed;
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #060918 0%, #0c1230 100%);
+        border-right: 1px solid rgba(0,210,190,0.06);
     }
-    h1, h2, h3, h4, h5, h6 {
-        color: #f1f5f9 !important;
-    }
-
-    /* Plotly chart containers */
-    .js-plotly-plot {
-        border-radius: 12px;
-        overflow: hidden;
-    }
-
-    /* Divider */
-    .neon-divider {
-        height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(0, 210, 190, 0.3), rgba(56, 130, 246, 0.3), transparent);
-        margin: 2rem 0;
-    }
-
-    /* Pulse dot for live status */
-    .pulse-dot {
-        display: inline-block;
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #00d2be;
-        margin-right: 6px;
-        animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-        0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,210,190,0.4); }
-        50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(0,210,190,0); }
-    }
+    .stMarkdown, .stText, p, span, li { color: #c8d6e5; }
+    h1, h2, h3, h4, h5, h6 { color: #f1f5f9 !important; }
 </style>
 """, unsafe_allow_html=True)
 
 # ── API Config ─────────────────────────────────────────────────────────
 
 API_BASE_URL = "http://localhost:8000/api"
-SEVERITY_COLORS = {
-    "normal": "#10b981",
-    "low": "#f59e0b",
-    "medium": "#f97316",
-    "high": "#ef4444",
-    "critical": "#dc2626",
+
+SEVERITY_LABELS = {
+    "normal": "Normal", "low": "Low Risk", "medium": "Moderate",
+    "high": "High Risk", "critical": "Critical",
 }
 SEVERITY_ICONS = {
-    "normal": "✅",
-    "low": "⚠️",
-    "medium": "🟠",
-    "high": "🔴",
-    "critical": "🚨",
+    "normal": "✅", "low": "⚠️", "medium": "🟠", "high": "🔴", "critical": "🚨",
 }
-
-
-# ── Helper Functions ───────────────────────────────────────────────────
-
-def create_severity_gauge(normal_count: int, abnormal_count: int, total: int):
-    """Create a radial gauge chart showing health score."""
-    if total == 0:
-        score = 100
-    else:
-        score = int((normal_count / total) * 100)
-
-    fig = go.Figure(go.Indicator(
-        mode="gauge+number+delta",
-        value=score,
-        title={"text": "Health Score", "font": {"size": 16, "color": "#e0e6ed"}},
-        number={"suffix": "%", "font": {"size": 40, "color": "#00d2be"}},
-        gauge={
-            "axis": {"range": [0, 100], "tickwidth": 1, "tickcolor": "#1e293b"},
-            "bar": {"color": "#00d2be", "thickness": 0.3},
-            "bgcolor": "rgba(15,23,42,0.5)",
-            "borderwidth": 0,
-            "steps": [
-                {"range": [0, 40], "color": "rgba(239,68,68,0.15)"},
-                {"range": [40, 70], "color": "rgba(245,158,11,0.15)"},
-                {"range": [70, 100], "color": "rgba(16,185,129,0.15)"},
-            ],
-            "threshold": {
-                "line": {"color": "#f87171", "width": 3},
-                "thickness": 0.8,
-                "value": 50,
-            },
-        },
-    ))
-    fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        height=220,
-        margin=dict(l=30, r=30, t=50, b=10),
-        font={"color": "#e0e6ed"},
-    )
-    return fig
-
-
-def create_severity_donut(findings: list):
-    """Create a donut chart showing severity distribution."""
-    severity_counts = {"Normal": 0, "Low": 0, "Medium": 0, "High": 0, "Critical": 0}
-    for f in findings:
-        s = f.get("status", "normal").capitalize()
-        if s in severity_counts:
-            severity_counts[s] += 1
-
-    labels = [k for k, v in severity_counts.items() if v > 0]
-    values = [v for v in severity_counts.values() if v > 0]
-    colors_map = {"Normal": "#10b981", "Low": "#f59e0b", "Medium": "#f97316", "High": "#ef4444", "Critical": "#dc2626"}
-    colors = [colors_map.get(l, "#64748b") for l in labels]
-
-    fig = go.Figure(go.Pie(
-        labels=labels,
-        values=values,
-        hole=0.65,
-        marker=dict(colors=colors, line=dict(color="#0a0e27", width=3)),
-        textfont=dict(color="#e0e6ed", size=12),
-        hoverinfo="label+value+percent",
-    ))
-    fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        height=220,
-        margin=dict(l=10, r=10, t=10, b=10),
-        showlegend=True,
-        legend=dict(font=dict(color="#e0e6ed", size=11), bgcolor="rgba(0,0,0,0)"),
-        annotations=[dict(text="Status", x=0.5, y=0.5, font_size=14, font_color="#64748b", showarrow=False)],
-    )
-    return fig
-
-
-def create_findings_bar(findings: list):
-    """Create a horizontal bar chart of findings with color-coded severity."""
-    if not findings:
-        return None
-
-    params = [f.get("parameter", "?")[:20] for f in findings]
-    statuses = [f.get("status", "normal") for f in findings]
-    colors = [SEVERITY_COLORS.get(s, "#64748b") for s in statuses]
-
-    fig = go.Figure(go.Bar(
-        y=params,
-        x=[1] * len(params),
-        orientation="h",
-        marker=dict(color=colors, line=dict(width=0)),
-        text=[s.upper() for s in statuses],
-        textposition="inside",
-        textfont=dict(color="white", size=11, family="Space Grotesk"),
-        hovertext=[f"{p}: {f.get('value', 'N/A')} {f.get('unit', '')}" for p, f in zip(params, findings)],
-        hoverinfo="text",
-    ))
-    fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        height=max(200, len(params) * 38),
-        margin=dict(l=0, r=20, t=10, b=10),
-        xaxis=dict(visible=False),
-        yaxis=dict(
-            tickfont=dict(color="#e0e6ed", size=11, family="Space Grotesk"),
-            autorange="reversed",
-        ),
-        bargap=0.3,
-    )
-    return fig
-
-
-# ── Sidebar ────────────────────────────────────────────────────────────
-
-with st.sidebar:
-    st.markdown("""
-    <div style="text-align: center; padding: 1rem 0 1.5rem 0;">
-        <div style="font-size: 2.5rem;">🏥</div>
-        <div style="font-family: 'Space Grotesk', sans-serif; font-size: 1.3rem; font-weight: 700;
-            background: linear-gradient(135deg, #00d2be, #3882f6);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
-            MedReport AI
-        </div>
-        <div style="font-size: 0.75rem; color: rgba(224,230,237,0.4); letter-spacing: 2px; text-transform: uppercase;">
-            Medical Intelligence
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    api_url = st.text_input("🔗 Backend API URL", value="http://localhost:8000", help="FastAPI server URL")
-    API_BASE_URL = f"{api_url}/api"
-
-    st.markdown("---")
-
-    st.markdown("""
-    <div class="glass-card" style="padding: 1rem;">
-        <div class="glass-card-header">⚡ How It Works</div>
-        <div style="font-size: 0.85rem; color: rgba(224,230,237,0.6); line-height: 1.7;">
-            <strong style="color: #00d2be;">01.</strong> Upload a medical report<br>
-            <strong style="color: #3882f6;">02.</strong> AI extracts key findings<br>
-            <strong style="color: #8b5cf6;">03.</strong> Get simplified explanations<br>
-            <strong style="color: #f59e0b;">04.</strong> View flagged abnormalities<br>
-            <strong style="color: #ef4444;">05.</strong> Ask follow-up questions
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("")
-    st.markdown("**📂 Supported Formats**")
-    st.caption("📄 PDF  ·  🖼️ PNG/JPG  ·  📝 TXT")
-    st.markdown(f"<span style='font-size:0.75rem; color:rgba(224,230,237,0.3);'>Max size: 10MB</span>", unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    st.markdown("**🕐 Report History**")
-    if "history" in st.session_state and st.session_state.history:
-        for item in reversed(st.session_state.history[-5:]):
-            st.markdown(f"""
-            <div style="background: rgba(0,210,190,0.04); border: 1px solid rgba(0,210,190,0.1);
-                border-radius: 10px; padding: 0.6rem; margin-bottom: 0.5rem; font-size: 0.82rem;">
-                <div style="color: #00d2be; font-weight: 600;">📄 {item['filename']}</div>
-                <div style="color: rgba(224,230,237,0.4); font-size: 0.75rem;">
-                    {item.get('report_type', 'N/A').replace('_',' ').title()} · {item.get('findings_count', 0)} findings
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-    else:
-        st.caption("No reports analyzed yet.")
-
-
-# ── Session State ──────────────────────────────────────────────────────
+SEVERITY_PERCENT = {
+    "normal": 0, "low": 25, "medium": 50, "high": 75, "critical": 100,
+}
 
 if "history" not in st.session_state:
     st.session_state.history = []
 
 
-# ── Hero Section ───────────────────────────────────────────────────────
+# ── Helper: Plotly Gauge ───────────────────────────────────────────────
+
+def make_gauge(normal: int, total: int):
+    score = int((normal / total) * 100) if total > 0 else 100
+    color = "#10b981" if score >= 80 else ("#f59e0b" if score >= 50 else "#ef4444")
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=score,
+        number={"suffix": "%", "font": {"size": 38, "color": color, "family": "Space Grotesk"}},
+        title={"text": "Overall Health Score", "font": {"size": 13, "color": "#64748b"}},
+        gauge={
+            "axis": {"range": [0, 100], "tickwidth": 0, "tickcolor": "rgba(0,0,0,0)"},
+            "bar": {"color": color, "thickness": 0.25},
+            "bgcolor": "rgba(255,255,255,0.02)",
+            "borderwidth": 0,
+            "steps": [
+                {"range": [0, 40], "color": "rgba(239,68,68,0.08)"},
+                {"range": [40, 70], "color": "rgba(245,158,11,0.08)"},
+                {"range": [70, 100], "color": "rgba(16,185,129,0.08)"},
+            ],
+        },
+    ))
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        height=200, margin=dict(l=20, r=20, t=45, b=0),
+        font={"color": "#c8d6e5"},
+    )
+    return fig
+
+
+def make_donut(findings: list):
+    counts = {"Normal": 0, "Low": 0, "Medium": 0, "High": 0, "Critical": 0}
+    for f in findings:
+        s = f.get("status", "normal").capitalize()
+        if s in counts:
+            counts[s] += 1
+    labels = [k for k, v in counts.items() if v > 0]
+    values = [v for v in counts.values() if v > 0]
+    cmap = {"Normal": "#10b981", "Low": "#f59e0b", "Medium": "#f97316", "High": "#ef4444", "Critical": "#dc2626"}
+    colors = [cmap.get(l, "#64748b") for l in labels]
+    fig = go.Figure(go.Pie(
+        labels=labels, values=values, hole=0.7,
+        marker=dict(colors=colors, line=dict(color="#060918", width=3)),
+        textfont=dict(color="#c8d6e5", size=11),
+        hoverinfo="label+value+percent",
+    ))
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        height=200, margin=dict(l=10, r=10, t=10, b=10),
+        showlegend=True,
+        legend=dict(font=dict(color="#c8d6e5", size=10), bgcolor="rgba(0,0,0,0)"),
+        annotations=[dict(text="Severity", x=0.5, y=0.5, font_size=12, font_color="#475569", showarrow=False)],
+    )
+    return fig
+
+
+# ══════════════════════════════════════════════════════════════════════
+# ══  SIDEBAR  ════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
+
+with st.sidebar:
+    st.markdown("""
+    <div style="text-align:center; padding:1.5rem 0 1rem;">
+        <div style="font-size:2.5rem;">🏥</div>
+        <div style="font-family:'Space Grotesk'; font-size:1.3rem; font-weight:700;
+            background:linear-gradient(135deg,#00d2be,#3882f6);
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent;">MedReport AI</div>
+        <div style="font-size:0.68rem; color:rgba(200,214,229,0.3); letter-spacing:2px; text-transform:uppercase;">
+            v1.0 · Medical Intelligence
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("---")
+    api_url = st.text_input("🔗 API Server", value="http://localhost:8000")
+    API_BASE_URL = f"{api_url}/api"
+
+    st.markdown("---")
+    st.markdown("""
+    <div class="gcard" style="padding:1rem;">
+        <div class="gcard-header">⚡ How It Works</div>
+        <div style="font-size:0.82rem; color:rgba(200,214,229,0.5); line-height:1.8;">
+            <strong style="color:#00d2be;">1.</strong> Upload medical report<br>
+            <strong style="color:#3882f6;">2.</strong> AI extracts key findings<br>
+            <strong style="color:#8b5cf6;">3.</strong> Get simplified explanations<br>
+            <strong style="color:#ef4444;">4.</strong> View flagged abnormalities<br>
+            <strong style="color:#f59e0b;">5.</strong> Ask follow-up questions
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("")
+    st.caption("📄 PDF  ·  🖼️ PNG/JPG  ·  📝 TXT")
+    st.caption("Max file size: 10MB")
+
+    st.markdown("---")
+    st.markdown("**📂 Recent Reports**")
+    if st.session_state.history:
+        for h in reversed(st.session_state.history[-5:]):
+            st.markdown(f"""<div style="background:rgba(0,210,190,0.03); border:1px solid rgba(0,210,190,0.08);
+                border-radius:10px; padding:0.5rem 0.8rem; margin-bottom:0.4rem; font-size:0.8rem;">
+                <div style="color:#00d2be; font-weight:600;">📄 {h['filename'][:25]}</div>
+                <div style="color:rgba(200,214,229,0.3); font-size:0.72rem;">
+                    {h.get('report_type','N/A').replace('_',' ').title()} · {h.get('findings_count',0)} findings
+                </div></div>""", unsafe_allow_html=True)
+    else:
+        st.caption("No reports analyzed yet.")
+
+
+# ══════════════════════════════════════════════════════════════════════
+# ══  TOP NAVIGATION  ═════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
 
 st.markdown("""
-<div class="hero-container">
-    <div class="hero-badge">🤖 Powered by GPT-4 Vision</div>
-    <div class="hero-title">Medical Report<br>Analyzer & Simplifier</div>
-    <div class="hero-subtitle">
-        Upload your medical reports and get instant AI-powered analysis.
-        Understand your results in simple language, see flagged abnormalities,
-        and get follow-up questions for your doctor.
+<div class="topnav">
+    <div class="topnav-brand">
+        <div class="topnav-logo">✚</div>
+        <div>
+            <div class="topnav-name">MedReport AI</div>
+            <div class="topnav-tagline">Medical Intelligence Platform</div>
+        </div>
+    </div>
+    <div class="topnav-links">
+        <span class="topnav-link">Features</span>
+        <span class="topnav-link">How It Works</span>
+        <span class="topnav-link">About</span>
+        <span class="topnav-cta">Get Started ↓</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
+
+# ══════════════════════════════════════════════════════════════════════
+# ══  HERO SECTION  ═══════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
+
 st.markdown("""
-<div class="medical-disclaimer">
-    ⚠️ <strong>Medical Disclaimer:</strong> This tool provides AI-generated analysis for <strong>informational purposes only</strong>.
-    It is NOT a substitute for professional medical advice. Always consult a qualified healthcare provider.
+<div class="hero">
+    <div class="hero-pill">
+        <span class="hero-pill-dot"></span>
+        Powered by GPT-4 Vision &amp; RAG
+    </div>
+    <h1>Your Medical Reports,<br>Simplified by AI</h1>
+    <p>
+        Upload lab tests, radiology reports, or prescriptions —
+        get instant AI analysis, clear explanations in simple language,
+        flagged abnormalities, and smart follow-up questions for your doctor.
+    </p>
 </div>
 """, unsafe_allow_html=True)
 
 
-# ── Upload Section ─────────────────────────────────────────────────────
+# ── Feature Cards ──────────────────────────────────────────────────────
 
 st.markdown("""
-<div class="section-header">
-    📤 Upload Report
-    <div class="section-header-line"></div>
+<div class="features-row">
+    <div class="feature-card" style="--fc-color: #00d2be;">
+        <div class="feature-icon">🔬</div>
+        <div class="feature-title">AI Analysis</div>
+        <div class="feature-desc">GPT-4 extracts and interprets every finding from your report</div>
+    </div>
+    <div class="feature-card" style="--fc-color: #3882f6;">
+        <div class="feature-icon">💬</div>
+        <div class="feature-title">Plain Language</div>
+        <div class="feature-desc">Complex medical terms explained like a friendly doctor would</div>
+    </div>
+    <div class="feature-card" style="--fc-color: #ef4444;">
+        <div class="feature-icon">🚩</div>
+        <div class="feature-title">Abnormality Alerts</div>
+        <div class="feature-desc">Red-flagged results with severity levels and visual indicators</div>
+    </div>
+    <div class="feature-card" style="--fc-color: #8b5cf6;">
+        <div class="feature-icon">❓</div>
+        <div class="feature-title">Follow-Up Questions</div>
+        <div class="feature-desc">Smart questions to ask your doctor at your next visit</div>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
-col_up, col_tip = st.columns([3, 1])
 
-with col_up:
+# ── Disclaimer ─────────────────────────────────────────────────────────
+
+st.markdown("""
+<div class="disclaimer-bar">
+    <span>⚠️</span>
+    <span><strong>Medical Disclaimer:</strong> This tool provides AI-generated analysis for
+    <strong>informational purposes only</strong>. It is NOT a substitute for professional medical advice.
+    Always consult a qualified healthcare provider.</span>
+</div>
+""", unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════════════════
+# ══  UPLOAD SECTION  ═════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
+
+st.markdown('<div class="upload-section-title">📤 Upload Your Medical Report</div>', unsafe_allow_html=True)
+
+col_upload, col_tips = st.columns([3, 1])
+
+with col_upload:
     uploaded_file = st.file_uploader(
-        "Upload your medical report",
+        "Drag & drop or browse",
         type=["pdf", "png", "jpg", "jpeg", "txt"],
-        help="Supported formats: PDF, PNG, JPG, JPEG, TXT (max 10MB)",
+        help="Supported: PDF, PNG, JPG, JPEG, TXT (max 10MB)",
         label_visibility="collapsed",
     )
 
-with col_tip:
+with col_tips:
     st.markdown("""
-    <div class="glass-card" style="padding: 1rem;">
-        <div class="glass-card-header">💡 Tips</div>
-        <div style="font-size: 0.82rem; color: rgba(224,230,237,0.55); line-height: 1.6;">
-            • Use clear, readable reports<br>
-            • High-res scans work best<br>
-            • Crop unnecessary margins
+    <div class="gcard" style="padding:1rem;">
+        <div class="gcard-header">💡 Pro Tips</div>
+        <div style="font-size:0.8rem; color:rgba(200,214,229,0.45); line-height:1.7;">
+            • Use clear, high-res scans<br>
+            • Crop unnecessary margins<br>
+            • Works best with lab reports<br>
+            • PDF gives the best results
         </div>
     </div>
     """, unsafe_allow_html=True)
 
 
-# ── Analysis Pipeline ─────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════
+# ══  ANALYSIS PIPELINE  ═════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
 
 if uploaded_file is not None:
-    file_size_kb = uploaded_file.size / 1024
+    file_kb = uploaded_file.size / 1024
+
     st.markdown(f"""
-    <div class="glass-card" style="display:flex; align-items:center; gap:1rem; padding:1rem 1.5rem;">
+    <div class="gcard" style="display:flex; align-items:center; gap:1rem; padding:1rem 1.5rem; margin-bottom:1rem;">
         <div style="font-size:2rem;">📄</div>
-        <div>
+        <div style="flex:1;">
             <div style="font-weight:600; color:#f1f5f9;">{uploaded_file.name}</div>
-            <div style="font-size:0.82rem; color:rgba(224,230,237,0.45);">{file_size_kb:.1f} KB · {uploaded_file.type}</div>
+            <div style="font-size:0.8rem; color:rgba(200,214,229,0.35);">{file_kb:.1f} KB · {uploaded_file.type}</div>
         </div>
-        <div style="margin-left:auto;">
-            <span class="pulse-dot"></span>
-            <span style="font-size:0.82rem; color:#00d2be;">Ready to analyze</span>
+        <div style="display:flex; align-items:center; gap:6px;">
+            <div style="width:8px; height:8px; border-radius:50%; background:#00d2be;
+                animation: blink 2s infinite;"></div>
+            <span style="font-size:0.82rem; color:#00d2be; font-weight:500;">Ready</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    analyze_btn = st.button("🔬  Analyze Report", type="primary", use_container_width=True)
+    if st.button("🔬  Analyze Report", type="primary", use_container_width=True):
 
-    if analyze_btn:
-        # ── Step 1: Upload ─────────────────────────────────────────
-        progress_bar = st.progress(0, text="📤 Uploading report...")
+        # ── Upload ─────────────────────────────────
+        progress = st.progress(0, text="📤 Uploading report...")
         try:
             files = {"file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
-            upload_resp = requests.post(f"{API_BASE_URL}/upload", files=files, timeout=30)
-
-            if upload_resp.status_code != 200:
-                st.error(f"❌ Upload failed: {upload_resp.json().get('detail', 'Unknown error')}")
+            up_resp = requests.post(f"{API_BASE_URL}/upload", files=files, timeout=30)
+            if up_resp.status_code != 200:
+                st.error(f"❌ Upload failed: {up_resp.json().get('detail', 'Unknown error')}")
                 st.stop()
-
-            upload_data = upload_resp.json()
-            file_id = upload_data["file_id"]
-            progress_bar.progress(33, text="✅ Uploaded! Analyzing with AI...")
-
+            file_id = up_resp.json()["file_id"]
+            progress.progress(30, text="✅ Uploaded! Analyzing with AI...")
         except requests.exceptions.ConnectionError:
-            st.error("❌ Cannot connect to backend API. Make sure the server is running.")
+            st.error("❌ Cannot connect to the backend. Make sure the server is running.")
             st.code("uvicorn app.main:app --reload --port 8000", language="bash")
             st.stop()
         except Exception as e:
-            st.error(f"❌ Upload error: {str(e)}")
+            st.error(f"❌ Upload error: {e}")
             st.stop()
 
-        # ── Step 2: Analyze ────────────────────────────────────────
+        # ── Analyze ────────────────────────────────
         try:
-            analyze_resp = requests.post(
+            a_resp = requests.post(
                 f"{API_BASE_URL}/analyze",
                 json={"file_id": file_id, "filename": uploaded_file.name},
                 timeout=120,
             )
-
-            if analyze_resp.status_code != 200:
-                st.error(f"❌ Analysis failed: {analyze_resp.json().get('detail', 'Unknown error')}")
+            if a_resp.status_code != 200:
+                st.error(f"❌ Analysis failed: {a_resp.json().get('detail', 'Unknown error')}")
                 st.stop()
-
-            analysis_data = analyze_resp.json()
-            progress_bar.progress(66, text="🧠 Analysis complete! Simplifying...")
-
+            analysis = a_resp.json()
+            progress.progress(65, text="🧠 Analyzed! Simplifying...")
         except Exception as e:
-            st.error(f"❌ Analysis error: {str(e)}")
+            st.error(f"❌ Analysis error: {e}")
             st.stop()
 
-        # ── Step 3: Simplify ───────────────────────────────────────
+        # ── Simplify ──────────────────────────────
         try:
-            simplify_resp = requests.post(
+            s_resp = requests.post(
                 f"{API_BASE_URL}/simplify",
-                json={
-                    "file_id": file_id,
-                    "summary": analysis_data["summary"],
-                    "findings": analysis_data["findings"],
-                },
+                json={"file_id": file_id, "summary": analysis["summary"], "findings": analysis["findings"]},
                 timeout=120,
             )
-            simplified_data = simplify_resp.json() if simplify_resp.status_code == 200 else None
+            simplified = s_resp.json() if s_resp.status_code == 200 else None
         except Exception:
-            simplified_data = None
+            simplified = None
 
-        progress_bar.progress(100, text="✨ Analysis complete!")
+        progress.progress(100, text="✨ Complete!")
 
-        # ── Save to history ────────────────────────────────────────
+        # ── Save history ───────────────────────────
         st.session_state.history.append({
             "filename": uploaded_file.name,
             "file_id": file_id,
-            "report_type": analysis_data.get("report_type", "N/A"),
-            "findings_count": len(analysis_data.get("findings", [])),
+            "report_type": analysis.get("report_type", "general"),
+            "findings_count": len(analysis.get("findings", [])),
         })
 
-        # ══════════════════════════════════════════════════════════════
-        # ══  RESULTS DISPLAY  ═══════════════════════════════════════
-        # ══════════════════════════════════════════════════════════════
+        # ══════════════════════════════════════════
+        # ══  RESULTS  ═════════════════════════════
+        # ══════════════════════════════════════════
 
-        st.markdown('<div class="neon-divider"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="neon-div"></div>', unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class="sec-header">📊 Analysis Results <div class="sec-line"></div></div>
+        """, unsafe_allow_html=True)
 
-        st.markdown("""
-        <div class="section-header">
-            📊 Analysis Results
-            <div class="section-header-line"></div>
+        findings = analysis.get("findings", [])
+        normal_count = sum(1 for f in findings if f.get("status") == "normal")
+        abnormal_findings = [f for f in findings if f.get("status", "normal") != "normal"]
+        abnormal_count = len(abnormal_findings)
+
+        # ── Stat Cards Row ─────────────────────────
+        st.markdown(f"""
+        <div class="stats-grid">
+            <div class="scard" style="--scard-color:#00d2be;">
+                <div style="position:absolute;top:0;left:0;right:0;height:3px;
+                    background:linear-gradient(90deg,#00d2be,#3882f6);"></div>
+                <div class="scard-icon">🔬</div>
+                <div class="scard-val teal">{len(findings)}</div>
+                <div class="scard-label">Total Findings</div>
+            </div>
+            <div class="scard">
+                <div style="position:absolute;top:0;left:0;right:0;height:3px;
+                    background:linear-gradient(90deg,#ef4444,#f97316);"></div>
+                <div class="scard-icon">{"🚨" if abnormal_count > 0 else "✅"}</div>
+                <div class="scard-val red">{abnormal_count}</div>
+                <div class="scard-label">Abnormal</div>
+            </div>
+            <div class="scard">
+                <div style="position:absolute;top:0;left:0;right:0;height:3px;
+                    background:linear-gradient(90deg,#3882f6,#60a5fa);"></div>
+                <div class="scard-icon">📋</div>
+                <div class="scard-val blue" style="font-size:1rem;">{analysis.get('report_type','general').replace('_',' ').title()}</div>
+                <div class="scard-label">Report Type</div>
+            </div>
+            <div class="scard">
+                <div style="position:absolute;top:0;left:0;right:0;height:3px;
+                    background:linear-gradient(90deg,#8b5cf6,#a78bfa);"></div>
+                <div class="scard-icon">📖</div>
+                <div class="scard-val purple">{len(analysis.get('medical_terms',[]))}</div>
+                <div class="scard-label">Medical Terms</div>
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
-        findings = analysis_data.get("findings", [])
-        normal_count = sum(1 for f in findings if f.get("status", "normal") == "normal")
-        abnormal_count = len(findings) - normal_count
+        # ── Charts Row ─────────────────────────────
+        ch1, ch2 = st.columns(2)
+        with ch1:
+            st.plotly_chart(make_gauge(normal_count, len(findings)), use_container_width=True, config={"displayModeBar": False})
+        with ch2:
+            st.plotly_chart(make_donut(findings), use_container_width=True, config={"displayModeBar": False})
 
-        # ── Stats Row (Plotly Gauge + Donut + Stat Cards) ──────────
-        gauge_col, donut_col, stats_col = st.columns([1.2, 1, 1.3])
+        # ══════════════════════════════════════════════════════════
+        # ══  ABNORMALITIES SECTION (RED COLUMN)  ═════════════════
+        # ══════════════════════════════════════════════════════════
 
-        with gauge_col:
-            st.plotly_chart(
-                create_severity_gauge(normal_count, abnormal_count, len(findings)),
-                use_container_width=True,
-                config={"displayModeBar": False},
-            )
+        st.markdown(f"""
+        <div class="sec-header">🚩 Abnormalities & Alerts <div class="sec-line"></div></div>
+        """, unsafe_allow_html=True)
 
-        with donut_col:
-            st.plotly_chart(
-                create_severity_donut(findings),
-                use_container_width=True,
-                config={"displayModeBar": False},
-            )
+        if abnormal_findings:
+            # Build abnormality details from simplified data if available
+            abnorm_details = {}
+            if simplified and simplified.get("abnormalities"):
+                for ab in simplified["abnormalities"]:
+                    key = ab.get("parameter", "").lower().strip()
+                    abnorm_details[key] = ab
 
-        with stats_col:
             st.markdown(f"""
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; height: 100%;">
-                <div class="stat-card">
-                    <div class="stat-icon">🔬</div>
-                    <div class="stat-value">{len(findings)}</div>
-                    <div class="stat-label">Findings</div>
+            <div class="abnorm-section">
+                <div class="abnorm-header">
+                    <div class="abnorm-header-icon">🚨</div>
+                    <div class="abnorm-header-text">Flagged Abnormalities</div>
+                    <div class="abnorm-header-count">{abnormal_count} found</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon">{"🚨" if abnormal_count > 0 else "✅"}</div>
-                    <div class="stat-value" style="{'background: linear-gradient(135deg, #ef4444, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;' if abnormal_count > 0 else ''}">{abnormal_count}</div>
-                    <div class="stat-label">Abnormal</div>
+            """, unsafe_allow_html=True)
+
+            for f in abnormal_findings:
+                sev = f.get("status", "low")
+                icon = SEVERITY_ICONS.get(sev, "⚠️")
+                label = SEVERITY_LABELS.get(sev, sev.title())
+
+                # Get simplified details if available
+                detail = abnorm_details.get(f.get("parameter", "").lower().strip(), {})
+                explanation = detail.get("explanation", f.get("interpretation", ""))
+                recommendation = detail.get("recommendation", "")
+
+                st.markdown(f"""
+                <div class="abnorm-card sev-{sev}">
+                    <div class="abnorm-param-row">
+                        <div class="abnorm-param">{icon} {f['parameter']}</div>
+                        <span class="sev-badge {sev}">{label}</span>
+                    </div>
+                    <div style="display:flex; align-items:baseline; gap:0.5rem; margin-top:0.3rem;">
+                        <span class="abnorm-value">{f['value']}</span>
+                        <span class="abnorm-unit">{f.get('unit','')}</span>
+                    </div>
+                    <div class="sev-bar-track">
+                        <div class="sev-bar-fill {sev}"></div>
+                    </div>
+                    <div class="abnorm-ref">📏 Reference Range: {f.get('reference_range', 'N/A')}</div>
+                    {"<div class='abnorm-explain'>💬 " + explanation + "</div>" if explanation else ""}
+                    {"<div class='abnorm-rec'>💡 <span>" + recommendation + "</span></div>" if recommendation else ""}
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon">📋</div>
-                    <div class="stat-value" style="font-size: 1rem;">{analysis_data.get('report_type', 'N/A').replace('_', ' ').title()}</div>
-                    <div class="stat-label">Type</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">📖</div>
-                    <div class="stat-value">{len(analysis_data.get('medical_terms', []))}</div>
-                    <div class="stat-label">Terms</div>
-                </div>
+                """, unsafe_allow_html=True)
+
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        else:
+            st.markdown("""
+            <div class="all-clear">
+                <div class="all-clear-icon">🛡️</div>
+                <div class="all-clear-title">All Clear!</div>
+                <div class="all-clear-sub">No significant abnormalities were detected in your report.</div>
             </div>
             """, unsafe_allow_html=True)
 
-        st.markdown("")
+        # ══════════════════════════════════════════════════════════
+        # ══  TABBED DETAILED RESULTS  ════════════════════════════
+        # ══════════════════════════════════════════════════════════
 
-        # ── Tabbed Results ─────────────────────────────────────────
-        tab_summary, tab_findings, tab_alerts, tab_questions = st.tabs([
-            "📋 Summary", "🔬 Detailed Findings", "🚩 Abnormalities", "💡 Follow-Up Questions"
-        ])
+        st.markdown('<div class="neon-div"></div>', unsafe_allow_html=True)
 
-        with tab_summary:
-            col_s1, col_s2 = st.columns([1, 1])
+        tab1, tab2, tab3 = st.tabs(["📋 Summary & Simplified", "🔬 All Findings", "❓ Follow-Up Questions"])
 
-            with col_s1:
-                st.markdown("#### 🧠 AI Analysis")
-                st.markdown(f"""<div class="summary-card">{analysis_data.get('summary', 'N/A')}</div>""", unsafe_allow_html=True)
+        with tab1:
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("#### 🧠 AI Analysis Summary")
+                st.markdown(f'<div class="summary-box">{analysis.get("summary","N/A")}</div>', unsafe_allow_html=True)
+            with c2:
+                if simplified:
+                    st.markdown("#### 💬 Simplified For You")
+                    st.markdown(f'<div class="summary-box">{simplified.get("simplified_summary","N/A")}</div>', unsafe_allow_html=True)
 
-            with col_s2:
-                if simplified_data:
-                    st.markdown("#### 💬 Simplified for You")
-                    st.markdown(f"""<div class="summary-card">{simplified_data.get('simplified_summary', 'N/A')}</div>""", unsafe_allow_html=True)
-
-            # Medical Terms
-            if analysis_data.get("medical_terms"):
+            if analysis.get("medical_terms"):
                 st.markdown("")
                 st.markdown("#### 📖 Medical Terms Detected")
-                terms_html = " ".join([f'<span class="term-pill">{t}</span>' for t in analysis_data["medical_terms"]])
-                st.markdown(terms_html, unsafe_allow_html=True)
+                pills = " ".join([f'<span class="pill">{t}</span>' for t in analysis["medical_terms"]])
+                st.markdown(pills, unsafe_allow_html=True)
 
-        with tab_findings:
+        with tab2:
             if findings:
-                # Bar chart visualization
-                bar_fig = create_findings_bar(findings)
-                if bar_fig:
-                    st.markdown("#### Status Overview")
-                    st.plotly_chart(bar_fig, use_container_width=True, config={"displayModeBar": False})
-
-                st.markdown("")
-                st.markdown("#### All Findings")
-
+                st.markdown("#### All Extracted Findings")
                 for f in findings:
-                    severity = f.get("status", "normal")
-                    icon = SEVERITY_ICONS.get(severity, "ℹ️")
-                    is_abnormal = severity != "normal"
-                    card_class = "finding-card abnormal" if is_abnormal else "finding-card"
-
-                    st.markdown(f"""
-                    <div class="{card_class}">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <div class="finding-param">{icon} {f['parameter']}</div>
-                                <div class="finding-value">{f['value']} <span style="font-size: 0.85rem; color: rgba(224,230,237,0.4);">{f.get('unit', '')}</span></div>
-                            </div>
-                            <span class="badge badge-{severity}">{severity.upper()}</span>
-                        </div>
-                        <div class="finding-meta">
-                            📏 Reference: {f.get('reference_range', 'N/A')} &nbsp;&nbsp;|&nbsp;&nbsp;
-                            💬 {f.get('interpretation', 'N/A')}
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.info("No findings extracted from the report.")
-
-        with tab_alerts:
-            if simplified_data and simplified_data.get("abnormalities"):
-                non_normal = [ab for ab in simplified_data["abnormalities"] if ab.get("severity", "normal") != "normal"]
-                if non_normal:
-                    for ab in non_normal:
-                        severity = ab.get("severity", "normal")
+                    sev = f.get("status", "normal")
+                    is_normal = sev == "normal"
+                    if is_normal:
                         st.markdown(f"""
-                        <div class="alert-card">
-                            <div class="alert-title">
-                                {SEVERITY_ICONS.get(severity, '⚠️')} {ab['parameter']}:
-                                <strong>{ab['value']}</strong>
-                                <span class="badge badge-{severity}" style="margin-left: 8px;">{severity.upper()}</span>
+                        <div class="finding-card">
+                            <div class="finding-row">
+                                <div>
+                                    <div class="finding-name">✅ {f['parameter']}</div>
+                                    <div style="font-size:0.78rem; color:rgba(200,214,229,0.3); margin-top:2px;">
+                                        Ref: {f.get('reference_range','N/A')} · {f.get('interpretation','')}
+                                    </div>
+                                </div>
+                                <div style="text-align:right;">
+                                    <div class="finding-val">{f['value']} <span style="font-size:0.75rem; color:rgba(200,214,229,0.3);">{f.get('unit','')}</span></div>
+                                    <span class="badge-normal">Normal</span>
+                                </div>
                             </div>
-                            <div class="alert-body">{ab.get('explanation', '')}</div>
-                            <div class="alert-rec">💡 {ab.get('recommendation', '')}</div>
                         </div>
                         """, unsafe_allow_html=True)
-                else:
-                    st.markdown("""
-                    <div class="glass-card" style="text-align: center; padding: 2rem;">
-                        <div style="font-size: 3rem; margin-bottom: 0.5rem;">✅</div>
-                        <div style="font-size: 1.1rem; color: #34d399; font-weight: 600;">All Clear!</div>
-                        <div style="color: rgba(224,230,237,0.5); font-size: 0.9rem;">No significant abnormalities detected.</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.info("Abnormality data not available. Please try analyzing the report again.")
+                    else:
+                        icon = SEVERITY_ICONS.get(sev, "⚠️")
+                        label = SEVERITY_LABELS.get(sev, sev.title())
+                        st.markdown(f"""
+                        <div class="abnorm-card sev-{sev}" style="margin-bottom:0.6rem;">
+                            <div class="abnorm-param-row">
+                                <div class="abnorm-param">{icon} {f['parameter']}</div>
+                                <span class="sev-badge {sev}">{label}</span>
+                            </div>
+                            <div style="display:flex; align-items:baseline; gap:0.5rem; margin-top:0.2rem;">
+                                <span class="abnorm-value">{f['value']}</span>
+                                <span class="abnorm-unit">{f.get('unit','')}</span>
+                            </div>
+                            <div class="sev-bar-track"><div class="sev-bar-fill {sev}"></div></div>
+                            <div class="abnorm-ref">📏 Ref: {f.get('reference_range','N/A')} · {f.get('interpretation','')}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
 
-        with tab_questions:
-            if simplified_data and simplified_data.get("followup_questions"):
-                st.markdown("**Ask your doctor these questions at your next visit:**")
+        with tab3:
+            if simplified and simplified.get("followup_questions"):
+                st.markdown("#### 💡 Questions to Ask Your Doctor")
                 st.markdown("")
-                for i, q in enumerate(simplified_data["followup_questions"], 1):
-                    st.markdown(f"""
-                    <div class="question-card">
-                        <span style="color: #3882f6; font-weight: 700; margin-right: 8px;">Q{i}.</span> {q}
-                    </div>
-                    """, unsafe_allow_html=True)
+                for i, q in enumerate(simplified["followup_questions"], 1):
+                    st.markdown(f'<div class="q-card"><span class="q-num">Q{i}.</span> {q}</div>', unsafe_allow_html=True)
             else:
-                st.info("Follow-up questions not available.")
+                st.info("Follow-up questions not available for this report.")
 
-        # ── Final Disclaimer ───────────────────────────────────────
-        st.markdown('<div class="neon-divider"></div>', unsafe_allow_html=True)
+        # ── Final Disclaimer ───────────────────────
+        st.markdown('<div class="neon-div"></div>', unsafe_allow_html=True)
+        disclaimer = simplified.get("disclaimer", "") if simplified else ""
+        if not disclaimer:
+            disclaimer = ("⚠️ This AI-generated analysis is for informational purposes only. "
+                         "It is NOT a substitute for professional medical advice, diagnosis, or treatment.")
+        st.markdown(f'<div class="disclaimer-bar"><span>⚠️</span><span>{disclaimer}</span></div>', unsafe_allow_html=True)
 
-        disclaimer_text = simplified_data.get("disclaimer", "") if simplified_data else ""
-        if not disclaimer_text:
-            disclaimer_text = (
-                "⚠️ This AI-generated analysis is for informational purposes only. "
-                "It is NOT a substitute for professional medical advice, diagnosis, or treatment. "
-                "Always consult a qualified healthcare provider for medical decisions."
-            )
-        st.markdown(f'<div class="medical-disclaimer">{disclaimer_text}</div>', unsafe_allow_html=True)
 
-        # Footer
-        st.markdown(f"""
-        <div style="text-align: center; padding: 1.5rem; color: rgba(224,230,237,0.2); font-size: 0.78rem;">
-            MedReport AI v1.0 · Powered by OpenAI GPT-4 · Built with FastAPI & Streamlit<br>
-            Analysis generated on {datetime.now().strftime('%B %d, %Y at %I:%M %p')}
-        </div>
-        """, unsafe_allow_html=True)
+# ══════════════════════════════════════════════════════════════════════
+# ══  FOOTER  ═════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
+
+st.markdown(f"""
+<div class="site-footer">
+    <div class="site-footer-brand">🏥 MedReport AI</div>
+    <div class="site-footer-links">
+        <span>Features</span> · <span>Documentation</span> · <span>About</span> · <span>Contact</span>
+    </div>
+    <div class="site-footer-copy">
+        © {datetime.now().year} MedReport AI · Built with FastAPI, OpenAI GPT-4 & Streamlit ·
+        For educational purposes only
+    </div>
+</div>
+""", unsafe_allow_html=True)
