@@ -10,7 +10,37 @@ import streamlit as st
 import requests
 import plotly.graph_objects as go
 import html
+import subprocess
+import sys
+import os
+import time
 from fpdf import FPDF
+
+# ── Backend Auto-Start (for Streamlit Cloud) ───────────────────────────
+def start_backend():
+    """Starts the FastAPI backend in a background process if not unreachable."""
+    health_url = "http://localhost:8000/health"
+    try:
+        requests.get(health_url, timeout=1)
+        return  # Backend is running
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        pass  # Backend not running
+
+    # Check if we are in the 'frontend' directory, if so move to root
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    
+    # Start uvicorn as a subprocess
+    subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"],
+        cwd=project_root,  # Run from project root to find 'app' module
+        # stdout=subprocess.DEVNULL, # Keep output for debugging logs in Cloud
+        # stderr=subprocess.DEVNULL
+    )
+    
+    # Wait for a few seconds to let it start
+    time.sleep(3)
+
+start_backend()
 
 # ── Page Config ────────────────────────────────────────────────────────
 st.set_page_config(
