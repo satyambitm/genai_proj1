@@ -108,11 +108,26 @@ Transform this into simple, patient-friendly language. Flag any abnormalities an
     # Build abnormality flags
     abnormalities = []
     for ab in result.get("abnormalities", []):
-        severity_str = ab.get("severity", "normal")
+        severity_str = ab.get("severity", "normal").lower().strip()
         try:
             severity = SeverityLevel(severity_str)
         except ValueError:
-            severity = SeverityLevel.NORMAL
+            # Map common GPT variations
+            fallback = {
+                "borderline": SeverityLevel.LOW,
+                "slightly elevated": SeverityLevel.LOW,
+                "slightly low": SeverityLevel.LOW,
+                "elevated": SeverityLevel.MEDIUM,
+                "abnormal": SeverityLevel.MEDIUM,
+                "moderate": SeverityLevel.MEDIUM,
+                "mild": SeverityLevel.LOW,
+                "severe": SeverityLevel.HIGH,
+                "very high": SeverityLevel.CRITICAL,
+                "very low": SeverityLevel.HIGH,
+                "within range": SeverityLevel.NORMAL,
+                "within normal limits": SeverityLevel.NORMAL,
+            }
+            severity = fallback.get(severity_str, SeverityLevel.LOW)
 
         abnormalities.append(
             AbnormalityFlag(

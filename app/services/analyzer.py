@@ -128,6 +128,59 @@ def analyze_image_report(image_path: str, file_id: str) -> AnalysisResponse:
     return _build_analysis_response(result, file_id)
 
 
+def _normalize_severity(raw: str) -> SeverityLevel:
+    """
+    Normalize GPT's severity string to a valid SeverityLevel.
+    Handles unexpected values like 'borderline', 'slightly elevated', etc.
+    """
+    raw = raw.lower().strip()
+
+    # Direct match
+    try:
+        return SeverityLevel(raw)
+    except ValueError:
+        pass
+
+    # Map common GPT variations to valid levels
+    mapping = {
+        "borderline": SeverityLevel.LOW,
+        "slightly elevated": SeverityLevel.LOW,
+        "slightly low": SeverityLevel.LOW,
+        "elevated": SeverityLevel.MEDIUM,
+        "abnormal": SeverityLevel.MEDIUM,
+        "mildly abnormal": SeverityLevel.LOW,
+        "moderately abnormal": SeverityLevel.MEDIUM,
+        "severely abnormal": SeverityLevel.HIGH,
+        "moderate": SeverityLevel.MEDIUM,
+        "mild": SeverityLevel.LOW,
+        "severe": SeverityLevel.HIGH,
+        "very high": SeverityLevel.CRITICAL,
+        "very low": SeverityLevel.HIGH,
+        "extremely high": SeverityLevel.CRITICAL,
+        "extremely low": SeverityLevel.CRITICAL,
+        "out of range": SeverityLevel.MEDIUM,
+        "within range": SeverityLevel.NORMAL,
+        "within normal limits": SeverityLevel.NORMAL,
+        "ok": SeverityLevel.NORMAL,
+        "fine": SeverityLevel.NORMAL,
+        "good": SeverityLevel.NORMAL,
+        "warning": SeverityLevel.MEDIUM,
+        "danger": SeverityLevel.HIGH,
+        "urgent": SeverityLevel.CRITICAL,
+    }
+
+    if raw in mapping:
+        return mapping[raw]
+
+    # Fuzzy matching — check if any keyword is contained in the string
+    for key, level in mapping.items():
+        if key in raw or raw in key:
+            return level
+
+    # Default fallback
+    return SeverityLevel.LOW
+
+
 def _build_analysis_response(
     result: dict, file_id: str, raw_text: Optional[str] = None
 ) -> AnalysisResponse:
@@ -142,7 +195,7 @@ def _build_analysis_response(
                 value=f.get("value", "N/A"),
                 unit=f.get("unit"),
                 reference_range=f.get("reference_range"),
-                status=SeverityLevel(f.get("status", "normal")),
+                status=_normalize_severity(f.get("status", "normal")),
                 interpretation=f.get("interpretation"),
             )
         )
